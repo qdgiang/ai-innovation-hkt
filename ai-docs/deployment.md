@@ -1,6 +1,8 @@
 # Deployment
 
-> Platform facts below were verified against vendor docs on **2026-07-17** (free tiers change often — re-check before committing money). Stack being deployed: Next.js frontend · FastAPI backend · Telegram bot · Postgres + pgvector · Claude API.
+> Platform facts below were verified against vendor docs on **2026-07-17** (free tiers change often — re-check before committing money). Stack being deployed: Next.js frontend · FastAPI backend · Telegram bot · Postgres · DeepSeek API.
+>
+> **Decisions locked 2026-07-17:** Vercel for the frontend (Giang's call). Hackathon window is **48h**, so backend/DB choices optimize for *fewest platforms and zero demo-day rituals*, not lowest theoretical cost. AI layer runs on Giang's **unlimited DeepSeek API plan**.
 
 ## The one architectural decision that shapes everything
 
@@ -17,14 +19,19 @@ Folding the bot into the API via webhook means **one deployable backend service*
 |---|---|---|---|---|
 | Frontend (Next.js) | **Vercel** | Hobby | $0 | Natural Next.js home; free tier is generous (100GB transfer, 1M invocations); hackathon = non-commercial, so Hobby terms are fine. No card needed. |
 | Backend (FastAPI + webhook bot + scheduler) | **Railway** | Hobby | $5/mo flat (includes $5 usage credit; a 0.5GB service burns ~$1/mo of it) | Always-on (no sleep), deploy-from-GitHub, needs a card. The $5 credit realistically covers API + DB for the hackathon month. |
-| Database (Postgres + pgvector) | **Neon** free — or Railway's pgvector template to keep everything in one place | Free | $0 | 0.5GB storage, 100 compute-hrs/mo, pgvector included. Autosuspends after 5 min idle but **auto-wakes on query** (sub-second to a few seconds) — acceptable. |
-| LLM | **Claude API** | pay-per-use | ~$1–5 for the whole hackathon | Batch extraction over the seed corpus + demo Q&A is thousands, not millions, of tokens. Keep the key server-side only. |
+| Database (Postgres) | **Railway Postgres**, same project as the backend | usage-based (~$1–2/mo of the included credit) | $0 extra | One platform, one dashboard, `DATABASE_URL` injected by reference variable, always-on — **no autosuspend to warm on demo day**. pgvector via Railway's template only if stretch item #6 (embeddings) ever happens. |
+| LLM | **DeepSeek API** (Giang's unlimited plan) | flat, already paid | $0 | OpenAI-compatible endpoint; extraction + Q&A are batch calls, thousands of tokens. Keep the key server-side only. |
 
-**Total: ~$5–10 for the entire hackathon.** That number goes in the pitch.
+**DeepSeek facts (verified 2026-07-17):** use model **`deepseek-v4-flash`** — the legacy `deepseek-chat`/`deepseek-reasoner` names are retired **2026-07-24**. JSON mode (`json_object`) is supported but strict `json_schema` on messages is not → Pydantic-validate client-side (or use the strict function-calling beta at `api.deepseek.com/beta`). No RPM/TPM quotas, but a 2500-concurrent cap (429 on excess) and a known 503-under-load pattern → retry-with-backoff in the client, deterministic fallbacks in the demo. ⚠️ DeepSeek offers **no official unlimited API tier** (official API is pay-per-token, ~$0.14/M in / $0.28/M out for v4-flash) — if the "unlimited plan" is a third-party reseller, confirm its base URL, exposed model IDs, and OpenAI-compat before building against it; worst case, official pay-per-token at demo volume is still <$1.
+
+**Total: $5 flat for the entire hackathon** (Railway Hobby; everything else is $0). That number goes in the pitch.
+
+**Why this shape for 48h:** exactly **two signups** (Vercel, Railway) plus BotFather. Backend + DB live in one Railway project, so provisioning is minutes and there's nothing to keep warm, wake, or un-pause on demo day. The earlier draft used Neon for the DB at $0 — fine, but it's a third platform with an autosuspend ritual, and that buys nothing in a 48-hour window (see below).
 
 ### Why not the obvious alternatives
 
 - **Vercel for the backend** — no. Hobby functions hard-cap at 300s and are request-driven; no persistent process, so the scheduler dies and long-polling is impossible. Vercel hosts the FE only.
+- **Neon (free) for the DB** — the previous recommendation, demoted under the 48h constraint. Still a great $0 option (0.5GB, pgvector, auto-wake), but it's a third platform + signup, and its 5-min autosuspend adds a "warm the DB before the demo" ritual. Falls back into play if the Railway credit ever feels tight — the swap is one `DATABASE_URL`.
 - **Supabase (free) for the DB** — tempting (500MB, pgvector, nice dashboard) but it **pauses after 7 days of inactivity and needs manual restore**. A quiet week before demo day = a dead database on stage. Only pick it if you'll be touching the DB daily anyway.
 - **Render free tier** — web services sleep after 15 min idle with ~1 min cold start (a `/ask` in Telegram would time out feeling), background workers aren't free at all ($7/mo), and the free Postgres **self-destructs after 30 days**. Pass.
 - **Fly.io** — no free tier for new orgs anymore; a small machine is ~$2–3/mo which is fine, but managed Postgres starts at $38/mo. Viable if you already have a legacy account; otherwise Railway is less friction.
@@ -39,14 +46,16 @@ Everything on **one VPS with Docker Compose** — Hetzner CX22 (2 vCPU / 4GB) at
 - Pros: full control, one bill, identical to local dev, great "runs anywhere" story.
 - Cons: you own TLS/backups/updates; no free CDN for the FE; more moving parts to rehearse.
 
-**Verdict:** Vercel + Railway + Neon for the hackathon (fastest, least ops); the Compose file you already maintain for local dev *is* the migration path to a VPS later.
+**Verdict:** Vercel + Railway (service + Postgres in one project) for the hackathon — fastest, least ops, nothing to keep awake; the Compose file you already maintain for local dev *is* the migration path to a VPS later.
 
 ## Environment & config
 
 ```
 # backend (Railway service variables)
-DATABASE_URL=postgres://...          # Neon or Railway PG
-ANTHROPIC_API_KEY=sk-ant-...         # server-side only, never in FE
+DATABASE_URL=${{Postgres.DATABASE_URL}}  # Railway reference variable (auto-injected)
+DEEPSEEK_API_KEY=sk-...              # server-side only, never in FE
+AI_BASE_URL=https://api.deepseek.com # OpenAI-compatible; swap provider = config change
+AI_MODEL=deepseek-v4-flash           # NOT deepseek-chat (retired 2026-07-24)
 TELEGRAM_BOT_TOKEN=...               # from BotFather
 TELEGRAM_WEBHOOK_SECRET=<random>     # checked against X-Telegram-Bot-Api-Secret-Token
 APP_BASE_URL=https://<railway-app>   # used to call setWebhook on boot
@@ -70,7 +79,7 @@ Keep it boring:
 ## Post-hackathon handoff (the sustainability slide)
 
 The NPO reality: no engineer on staff, ~$0 budget. The handoff story:
-- Monthly cost: **Railway $5 + Neon $0 + Claude API <$5 ≈ under $10/month** at NPO scale (batch extraction, no per-message calls).
+- Monthly cost: **Railway $5 (service + Postgres) + LLM ≈ under $10/month** at NPO scale. The NPO won't inherit Giang's unlimited DeepSeek plan — quote pay-as-you-go DeepSeek (or any OpenAI-compatible provider) at batch-extraction volume: pennies to low single digits per month.
 - Runs as **one container + one managed DB**; a semi-technical volunteer redeploys by clicking "Redeploy" in Railway.
 - `HANDOFF.md` in the repo: how to rotate the bot token, where the API key lives, how to export all records to CSV/Notion (the memory outlives the tool).
 - Escape hatch: `docker compose up` reproduces the entire system on any machine — no platform lock-in.
@@ -78,7 +87,7 @@ The NPO reality: no engineer on staff, ~$0 budget. The handoff story:
 ## Demo-day checklist
 
 - [ ] Deploy frozen 24h before; no infra changes after.
-- [ ] Ping the Neon DB the morning of (warm the autosuspend) and open the dashboard once (warm Vercel edge cache).
+- [ ] Open the dashboard once the morning of (warm Vercel edge cache). No DB warm-up needed — Railway PG doesn't sleep.
 - [ ] Pre-run one digest + one `/ask` so responses are cached/verified.
 - [ ] Fallback: local `docker compose up` + long-polling mode on the laptop, rehearsed — survives venue-wifi and platform outages alike.
 - [ ] Phone hotspot as network fallback for the live Telegram beat.

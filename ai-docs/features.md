@@ -56,12 +56,12 @@ Everything ingested becomes one canonical shape, so every downstream feature is 
 - **Note:** this covers the "decisions happen in meetings too" story and needs no platform API at all — great demo-reliability.
 
 ### F4 — Passive LLM extraction → typed records ⚠️ the make-or-break feature
-- **What:** Batch job over conversation windows (per thread, or ~30-min gaps, ~10–20 messages, with `[team | channel | date | participants]` header). Claude extracts structured records:
+- **What:** Batch job over conversation windows (per thread, or ~30-min gaps, ~10–20 messages, with `[team | channel | date | participants]` header). The LLM extracts structured records:
   - `Decision {title, summary, rationale, decided_by, date, supersedes?, source_msg_ids[]}`
   - `Blocker {title, owner?, waiting_on, since, status, source_msg_ids[]}`
   - `Status {team, summary, period, source_msg_ids[]}`
   Every record **must** carry source message IDs → renders as clickable citations.
-- **AI specifics:** Claude API (`claude-opus-4-8`), structured outputs (schema-enforced JSON), adaptive thinking; batch/on-demand, not per-message (cost control). Dedup pass: a new record that matches an existing one (same window/topic) updates rather than duplicates.
+- **AI specifics:** DeepSeek API (**`deepseek-v4-flash`** — do NOT use `deepseek-chat`/`deepseek-reasoner`, retired 2026-07-24) through the OpenAI-compatible SDK (`base_url=https://api.deepseek.com`) — Giang's unlimited plan makes extraction cost $0. DeepSeek supports JSON mode (`json_object`) but **not** OpenAI-style strict `json_schema` on messages, so output is validated against the Pydantic record schemas with a retry-on-invalid wrapper — schema enforcement lives on our side. (Alternative if that wobbles: strict function-calling beta, `base_url=https://api.deepseek.com/beta` + `"strict": true` tool defs, gives server-side schema validation.) The AI layer stays provider-agnostic: model + base URL are env config, so if extraction precision won't converge on DeepSeek, swapping to Claude or any OpenAI-compatible endpoint is a config change, not a rewrite. Batch/on-demand, not per-message; retry-with-backoff on 429/503 (DeepSeek's known load pattern). Dedup pass: a new record that matches an existing one (same window/topic) updates rather than duplicates.
 - **Inputs:** prompt + record schemas + the golden set (F6) to iterate against.
 - **Complexity:** High — not the code (one API call) but the *quality iteration*: messy informal chat, Vietnamese/English mix (if applicable), avoiding hallucinated decisions. Precision >> recall: a missed decision is invisible; an invented one destroys trust.
 - **Dependency:** F1 (messages), F6 (to measure quality before building UI on top).
@@ -99,7 +99,7 @@ Everything ingested becomes one canonical shape, so every downstream feature is 
 
 ### F11 — Web dashboard
 - **What:** Read-only views over the record store: digest archive, decision log (filter/search), blocker board with age, team timeline, and the Q&A box. This is the judge-facing surface; volunteers get everything in Telegram.
-- **Complexity:** Med–High depending on stack: Next.js (proper FE, deployable to Vercel, better polish) vs Streamlit (half the effort, less wow). Decision deferred to plan.md Phase 3 — the backend API (below) is identical either way.
+- **Complexity:** Med–High. **Decided (2026-07-17): Next.js on Vercel.** Under the 48h clock, ship views in priority order (decision log → blocker board → digest archive → Q&A box) and stop when time runs out — the backend API is identical regardless of how many views land.
 
 ### F12 — Onboarding brief (stretch)
 - **What:** `/onboard <team>` (or auto on join): generates a scoped packet — active work, the decisions shaping it (with citations), open blockers, who owns what. Cheap: it's a re-filter of records that already exist.
@@ -128,7 +128,7 @@ flowchart LR
   end
 
   subgraph AI["AI LAYER (services)"]
-    EX[Extractor<br/>markers + Claude structured output]
+    EX[Extractor<br/>markers + LLM JSON extraction - DeepSeek]
     QA[Q&A service<br/>retrieve → grounded answer]
     DG[Digest generator<br/>records → grounded prose]
     EV[Eval harness<br/>golden set]
@@ -187,5 +187,5 @@ Citation {record_id, message_id}   -- every record ≥1 citation, enforced
 
 - **Extraction quality** — the single biggest risk. Mitigations: golden set before UI (F6), precision-biased prompts, marker fallback (F5), citations everywhere, correction loop (F13).
 - **Privacy/consent framing** — opt-in channels only (bot presence = visible consent), work-not-people extraction, whole-channel outputs, published record schema. Feature-level design, not a disclaimer slide.
-- **LLM cost** — batch extraction on conversation windows + on-demand Q&A; no per-message calls. Demo-scale cost is trivial; quote "<$10/month for an NPO" in the pitch (verify against final call volume).
+- **LLM cost** — batch extraction on conversation windows + on-demand Q&A; no per-message calls (window batching stays even with an unlimited plan — it's also latency + rate-limit hygiene). Hackathon cost: $0 (unlimited DeepSeek plan). For the NPO-handoff pitch, quote pay-as-you-go DeepSeek or any OpenAI-compatible provider — pennies per month at NPO scale.
 - **Demo reliability** — every AI feature has a deterministic sibling (markers, staleness SQL, seed corpus) so a live wobble never stalls the demo.
