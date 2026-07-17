@@ -1,0 +1,596 @@
+{
+  "meta": {
+    "corpus_file": "corpus.jsonl",
+    "transcript_file": "meeting-2026-06-28.txt",
+    "weeks": [
+      "2026-W24",
+      "2026-W25",
+      "2026-W26",
+      "2026-W27",
+      "2026-W28"
+    ],
+    "authored": "2026-07-17"
+  },
+  "teams": [
+    {
+      "team": "education",
+      "channel": "aiv-education",
+      "focus": "weekend Scratch/Python classes for kids"
+    },
+    {
+      "team": "events",
+      "channel": "aiv-events",
+      "focus": "charity fair prep (2026-08-02)"
+    },
+    {
+      "team": "comms",
+      "channel": "aiv-comms",
+      "focus": "fundraising, social media, sponsors"
+    }
+  ],
+  "personas": [
+    {
+      "handle": "linh",
+      "name": "Nguyen Thuy Linh",
+      "teams": [
+        "events"
+      ],
+      "role": "events lead"
+    },
+    {
+      "handle": "duc",
+      "name": "Tran Minh Duc",
+      "teams": [
+        "events"
+      ],
+      "role": "logistics, stage/sound"
+    },
+    {
+      "handle": "khoa",
+      "name": "Le Anh Khoa",
+      "teams": [
+        "events",
+        "education"
+      ],
+      "role": "volunteer coordinator"
+    },
+    {
+      "handle": "mai",
+      "name": "Pham Thi Mai",
+      "teams": [
+        "education"
+      ],
+      "role": "education lead"
+    },
+    {
+      "handle": "tuan",
+      "name": "Nguyen Anh Tuan",
+      "teams": [
+        "education"
+      ],
+      "role": "Python teacher"
+    },
+    {
+      "handle": "thao",
+      "name": "Do Thu Thao",
+      "teams": [
+        "education",
+        "comms"
+      ],
+      "role": "Scratch teacher, photos"
+    },
+    {
+      "handle": "phuong",
+      "name": "Vu Ha Phuong",
+      "teams": [
+        "comms"
+      ],
+      "role": "comms lead"
+    },
+    {
+      "handle": "an",
+      "name": "Bui Hoai An",
+      "teams": [
+        "comms"
+      ],
+      "role": "social media"
+    },
+    {
+      "handle": "huong",
+      "name": "Ngo Thi Huong",
+      "teams": [
+        "comms"
+      ],
+      "role": "sponsors + finance"
+    },
+    {
+      "handle": "minh",
+      "name": "Dang Quang Minh",
+      "teams": [
+        "events",
+        "comms"
+      ],
+      "role": "design, t-shirts"
+    }
+  ],
+  "decisions": [
+    {
+      "key": "D1",
+      "title": "Charity fair venue = Phuong Liet Community Center",
+      "team": "events",
+      "date": "2026-06-10",
+      "summary": "After comparing three options in chat, Linh concluded the fair will be at Phuong Liet Community Center: 1.2tr VND/day including tables and chairs, available on the candidate weekends. Penciled in; final date due within 2 weeks.",
+      "rationale": "Thanh Xuan Cultural House cost 5tr/day plus deposit; the free school yard had no rain plan and an unreachable principal; Phuong Liet CC was cheap, equipped, and available.",
+      "decided_by": "linh",
+      "supersedes": null,
+      "superseded_by": "D2",
+      "marked": false,
+      "source_msg_ids": [
+        "m0038"
+      ]
+    },
+    {
+      "key": "D2",
+      "title": "Charity fair venue moved from Phuong Liet community center to Nguyen Du School gym",
+      "team": "events",
+      "date": "2026-06-24",
+      "summary": "Phuong Liet CC's new management doubled the fair-day rent from 1tr2 to 2tr4 and voided the old quote (w26-034), and the main hall AC is broken with no fix before end of August (w26-037). After khoa suggested the school gym, linh chot the move in w26-044: gym is free at community-partner rate, working ceiling fans, indoor rain plan, plus yard space for extra stalls. Supersedes the earlier community-center decision (D1). Paperwork signed next day (w26-059).",
+      "rationale": "Doubled rental fee (1tr2 -> 2tr4) plus broken AC in August heat vs a free gym with working fans, indoor rain cover, and yard space; existing school relationship via weekend classes",
+      "decided_by": "linh",
+      "supersedes": "D1",
+      "superseded_by": null,
+      "marked": false,
+      "source_msg_ids": [
+        "m0245",
+        "m0248",
+        "m0255"
+      ]
+    },
+    {
+      "key": "D3",
+      "title": "Weekly classes locked to Saturday 09:00",
+      "team": "education",
+      "date": "2026-06-09",
+      "summary": "Education team fixed the recurring class slot: every Saturday at 09:00, starting week of 2026-06-08. Mai announced it with the !decision marker after an availability poll; parents notified via Zalo.",
+      "rationale": "Families prefer Saturday morning (drop-off on the way to weekend jobs) and volunteer availability is highest then; Sunday is family day for several kids.",
+      "decided_by": "mai",
+      "supersedes": null,
+      "superseded_by": "D4",
+      "marked": true,
+      "source_msg_ids": [
+        "m0026"
+      ]
+    },
+    {
+      "key": "D4",
+      "title": "Weekend classes move to Sunday 14:00 (supersedes D3)",
+      "team": "education",
+      "date": "2026-07-01",
+      "summary": "mai concluded that weekend classes move from Saturday to Sunday 14:00 starting Jul 5, same rooms. Supersedes the earlier Saturday-schedule decision (D3).",
+      "rationale": "School needs the Saturday rooms for grade-9 exam prep until end of August, and khoa's volunteer sheet shows more volunteers are free on Sundays than Saturdays",
+      "decided_by": "mai",
+      "supersedes": "D3",
+      "superseded_by": null,
+      "marked": false,
+      "source_msg_ids": [
+        "m0358"
+      ]
+    },
+    {
+      "key": "D5",
+      "title": "Fair donations via VietQR bank transfer, not Momo",
+      "team": "comms",
+      "date": "2026-06-17",
+      "summary": "After a Momo-vs-bank-transfer debate, phuong concludes: VietQR bank transfer on the club account, Momo only as fallback for people who cannot transfer.",
+      "rationale": "Traceability for the finance report — every donation lands in one club account with sender name and note attached; Momo would sit on a personal wallet with painful statement exports (last year's reconciliation was a nightmare).",
+      "decided_by": "phuong",
+      "supersedes": null,
+      "superseded_by": null,
+      "marked": false,
+      "source_msg_ids": [
+        "m0148",
+        "m0150"
+      ]
+    },
+    {
+      "key": "D6",
+      "title": "Fair t-shirts: InTheXanh, 120 shirts, navy",
+      "team": "comms",
+      "date": "2026-06-30",
+      "summary": "After comparing quotes (InTheXanh 78k/shirt vs Áo Xưởng 71k with thinner fabric), minh locked the fair t-shirt order: vendor InTheXanh, 120 shirts, navy, ~9.4tr total, delivery 2 weeks before fair day.",
+      "rationale": "Better fabric quality justifies the 7k/shirt premium; last year's cheap shirts faded after 2 washes; navy suits the design",
+      "decided_by": "minh",
+      "supersedes": null,
+      "superseded_by": null,
+      "marked": true,
+      "source_msg_ids": [
+        "m0338"
+      ]
+    },
+    {
+      "key": "D7",
+      "title": "Buddy system for new volunteers",
+      "team": "education",
+      "date": "2026-06-19",
+      "summary": "mai makes it a rule: every new volunteer is paired with an experienced mentor for their first 2 sessions — shadow first, then co-teach; khoa assigns the pairs on signup.",
+      "rationale": "A recent new volunteer was left standing alone with no onboarding; pairing prevents that and gets newcomers teaching faster.",
+      "decided_by": "mai",
+      "supersedes": null,
+      "superseded_by": null,
+      "marked": false,
+      "source_msg_ids": [
+        "m0180"
+      ]
+    },
+    {
+      "key": "D8",
+      "title": "Fair entry is FREE with donation box at the gate",
+      "team": "events",
+      "date": "2026-07-08",
+      "summary": "linh posts !decision: fair entry will be free with a donation box at the gate, explicitly replacing the earlier 20k ticket plan. Comms immediately repurposes messaging around FREE ENTRY (w28-045/046) and huong preps donation-count procedures (w28-047).",
+      "rationale": "Higher attendance, removes ticket-selling/checking overhead, and donations typically match or exceed ticket revenue",
+      "decided_by": "linh",
+      "supersedes": null,
+      "superseded_by": null,
+      "marked": true,
+      "source_msg_ids": [
+        "m0465"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "key": "B1",
+      "title": "Sound-system rental vendor not replying (first passing mention)",
+      "team": "events",
+      "owner": "duc",
+      "waiting_on": "Sound rental vendor's reply to the quote request sent 2026-06-18 (w25-072)",
+      "since": "2026-06-20",
+      "implicit": true,
+      "marked": false,
+      "resolved": false,
+      "resolved_msg_id": null,
+      "source_msg_ids": [
+        "m0200",
+        "m0297",
+        "m0426"
+      ]
+    },
+    {
+      "key": "B2",
+      "title": "No access to NPO bank statements — e-banking handover pending from former treasurer",
+      "team": "comms",
+      "owner": "huong",
+      "waiting_on": "chi Yen (former treasurer) to hand over e-banking access",
+      "since": "2026-06-22",
+      "implicit": false,
+      "marked": true,
+      "resolved": true,
+      "resolved_msg_id": "m0370",
+      "source_msg_ids": [
+        "m0218"
+      ]
+    },
+    {
+      "key": "B3",
+      "title": "Classroom projector dead; school IT says replacement 'next month, maybe'",
+      "team": "education",
+      "owner": "tuan",
+      "waiting_on": "school IT projector replacement (or a borrowed projector)",
+      "since": "2026-06-25",
+      "implicit": false,
+      "marked": false,
+      "resolved": false,
+      "resolved_msg_id": null,
+      "source_msg_ids": [
+        "m0264",
+        "m0266"
+      ]
+    },
+    {
+      "key": "B4",
+      "title": "T-shirt printing delayed by InTheXanh, no ETA",
+      "team": "events",
+      "owner": "minh",
+      "waiting_on": "new ETA from InTheXanh print shop",
+      "since": "2026-07-07",
+      "implicit": false,
+      "marked": true,
+      "resolved": false,
+      "resolved_msg_id": null,
+      "source_msg_ids": [
+        "m0447"
+      ]
+    },
+    {
+      "key": "B5",
+      "title": "No admin access to AIV Facebook page",
+      "team": "comms",
+      "owner": "an",
+      "waiting_on": "chi Yen (rotated-out former treasurer, now in Da Nang) to restore page admin access; huong is reaching out via Zalo, no reply yet",
+      "since": "2026-06-12",
+      "implicit": false,
+      "marked": false,
+      "resolved": true,
+      "resolved_msg_id": "m0103",
+      "source_msg_ids": [
+        "m0070",
+        "m0072"
+      ]
+    }
+  ],
+  "statuses": [
+    {
+      "key": "S-w24-comms",
+      "team": "comms",
+      "period": "2026-W24",
+      "summary": "Sponsor letter with 3-tier sponsorship table ready (locks once fair date is set); followers passed 800; Friday post published via An's personal account. Open issue: no Facebook page admin access, chasing chi Yen, unresolved.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0082"
+      ]
+    },
+    {
+      "key": "S-w24-education",
+      "team": "education",
+      "period": "2026-W24",
+      "summary": "Schedule locked to Saturdays 09:00 and parents notified; first 9am class ran with 22 kids and 6 volunteers (Python turtle graphics + Scratch maze with power-ups); next Saturday Tuan teaches loops.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0094"
+      ]
+    },
+    {
+      "key": "S-w24-events",
+      "team": "events",
+      "period": "2026-W24",
+      "summary": "Venue settled (Phuong Liet Community Center, 1tr2/day incl tables+chairs, penciled for two candidate weekends, date due within 2 weeks); 2 free speakers plus van transport secured by Duc; poster v1 in progress by Minh. Next week: pick fair date and draft budget.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0080"
+      ]
+    },
+    {
+      "key": "S-w25-comms",
+      "team": "comms",
+      "period": "2026-W25",
+      "summary": "phuong's informal wrap: FB admin access recovered, donation method locked (VietQR bank transfer), standee in design, 5 sponsor decks out, bakery tentatively interested; next week FB event page + boost volunteer post.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0189"
+      ]
+    },
+    {
+      "key": "S-w25-education",
+      "team": "education",
+      "period": "2026-W25",
+      "summary": "mai's informal wrap: Scratch class ran great, 2 new volunteers onboarded via buddy system, worksheets sorted; next Saturday is Python with tuan back.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0207"
+      ]
+    },
+    {
+      "key": "S-w25-events",
+      "team": "events",
+      "period": "2026-W25",
+      "summary": "linh's !status wrap: venue contract signed + deposit paid (cleanup deposit capped), booth map v1 done (12 booths, sponsors row A), stage measured 6x4m with 2.8m beam noted, t-shirt design locked with quote in hand; next week sound & lighting quotes, vendor confirmations, shirt order size.",
+      "marked": true,
+      "source_msg_ids": [
+        "m0186"
+      ]
+    },
+    {
+      "key": "S-w26-comms",
+      "team": "comms",
+      "period": "2026-W26",
+      "summary": "Sponsor deck out to 5 companies (1 lukewarm reply, huong chasing); venue-change post performing well; poster v2 locked; finance still stuck behind the chi Yen e-banking handover going into Sunday's all-hands.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0285"
+      ]
+    },
+    {
+      "key": "S-w26-education",
+      "team": "education",
+      "period": "2026-W26",
+      "summary": "19 kids at Saturday class (2 new); Scratch group started pet simulator; Python did the variables quiz (avg 7/10 despite no projector); 2 new uni tutors onboarded. Projector still broken — same setup next week unless one turns up; mai raising it at the all-hands.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0296"
+      ]
+    },
+    {
+      "key": "S-w26-events",
+      "team": "events",
+      "period": "2026-W26",
+      "summary": "Venue = Nguyen Du gym, signed; 14 committed stalls + 3 new inquiries; volunteers 26/30; stall map v2 done; t-shirt and poster final. Open items: sound quote, banner printing quote.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0303"
+      ]
+    },
+    {
+      "key": "S-w27-comms",
+      "team": "comms",
+      "period": "2026-W27",
+      "summary": "T-shirts decided (InTheXanh, 120 navy); e-banking access recovered from chi Yen so payments unblocked; venue + stage deposits paid; budget at ~82% of the all-hands cap. Next week: sponsor pack v2 + big fair announcement post.",
+      "marked": true,
+      "source_msg_ids": [
+        "m0389"
+      ]
+    },
+    {
+      "key": "S-w27-education",
+      "team": "education",
+      "period": "2026-W27",
+      "summary": "Classes officially move to Sunday 14:00 starting Jul 5; parents informed; volunteer schedule updated; teachers to arrive 13:30 for setup.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0392"
+      ]
+    },
+    {
+      "key": "S-w27-events",
+      "team": "events",
+      "period": "2026-W27",
+      "summary": "Stage contract signed (5tr incl backup mics), venue layout v2 done, 44/50 volunteers. Next week: stall assignments + open questions.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0387"
+      ]
+    },
+    {
+      "key": "S-w28-comms",
+      "team": "comms",
+      "period": "2026-W28",
+      "summary": "3 of 4 sponsor payments received (TechViet cleared), So Do Cafe promises to sign Monday, teaser #2 hit 200+ likes — a page record — and next week's content continues the free-entry angle. Natural unmarked status.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0504"
+      ]
+    },
+    {
+      "key": "S-w28-education",
+      "team": "education",
+      "period": "2026-W28",
+      "summary": "Both weekend classes fully scheduled, 3 new Scratch slots filled, loops part-2 worksheet ready, kids' fair-demo plan to be finalized after Sunday's meeting. Natural unmarked status.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0503"
+      ]
+    },
+    {
+      "key": "S-w28-events",
+      "team": "events",
+      "period": "2026-W28",
+      "summary": "Truss and genset booked, cable plan v1 done, sound supplier STILL not locked (plan B being prepared), t-shirts stuck waiting on InTheXanh ETA, entry decided as free + donation box; 23 days to the fair. Natural unmarked status.",
+      "marked": false,
+      "source_msg_ids": [
+        "m0500"
+      ]
+    }
+  ],
+  "transcript_records": [
+    {
+      "key": "TD1",
+      "type": "decision",
+      "title": "Fair date locked: Saturday 2026-08-02",
+      "summary": "After back-and-forth about a rain-season backup (Aug 16 option rejected: not drier, collides with the mid-August class showcase, and the Nguyen Du School gym is indoors so rain risk is covered), Linh locks the charity fair date for Saturday August 2nd, 2026.",
+      "decided_by": "linh",
+      "owner": null,
+      "waiting_on": null,
+      "source_turns": [
+        "02:31",
+        "03:47",
+        "03:55",
+        "04:11",
+        "04:22"
+      ]
+    },
+    {
+      "key": "TD2",
+      "type": "decision",
+      "title": "Fair budget cap: 25,000,000 VND",
+      "summary": "Phuong relays Huong's line-item budget (stage/sound 8M, tents/tables 4.5M, banners/printing 3M, prizes/kids' materials 4M, volunteer food 2.5M, contingency 3M = 25M flat); Linh confirms the cap at 25 million VND, with any overrun requiring her sign-off and prizes cut first.",
+      "decided_by": "linh",
+      "owner": null,
+      "waiting_on": null,
+      "source_turns": [
+        "05:16",
+        "05:27",
+        "06:31",
+        "06:38",
+        "06:49"
+      ]
+    },
+    {
+      "key": "TB1",
+      "type": "blocker",
+      "title": "District event permit still pending",
+      "summary": "Permit application submitted two weeks ago; Linh called the ward office twice with no response. Flagged as the biggest open risk (no fair without it); public date announcement held to teasers until it clears. Action item left open: Linh goes in person Tuesday and keeps chasing.",
+      "decided_by": null,
+      "owner": "linh",
+      "waiting_on": "ward office / district response to the event permit application",
+      "source_turns": [
+        "07:58",
+        "08:16",
+        "08:34",
+        "09:18"
+      ]
+    }
+  ],
+  "distractors": [
+    {
+      "key": "X1",
+      "note": "Volunteer signup scare (self-resolved, not a blocker)",
+      "msg_ids": [
+        "m0163",
+        "m0164",
+        "m0165"
+      ]
+    },
+    {
+      "key": "X2",
+      "note": "20k VND entry ticket idea floated — no conclusion",
+      "msg_ids": [
+        "m0229"
+      ]
+    },
+    {
+      "key": "X3",
+      "note": "Parking fee at the fair — postponed, never revisited",
+      "msg_ids": [
+        "m0374",
+        "m0378"
+      ]
+    },
+    {
+      "key": "X4",
+      "note": "Snack sponsor feature vote postponed, no conclusion",
+      "msg_ids": [
+        "m0482",
+        "m0486"
+      ]
+    }
+  ],
+  "qa_questions": [
+    {
+      "q": "Why did we switch venues for the fair?",
+      "expected_answer_gist": "The fair moved from Phuong Liet Community Center to the Nguyen Du School gym on 2026-06-24 because the community center doubled its rental fee (1tr2 -> 2tr4) and its AC is broken, while the gym is free at community-partner rate with fans and an indoor rain plan. The original community-center decision is superseded.",
+      "expected_keys": [
+        "D2",
+        "D1"
+      ],
+      "expected_citation_msg_ids": [
+        "m0245",
+        "m0248",
+        "m0255",
+        "m0038"
+      ]
+    },
+    {
+      "q": "Why did the weekend classes move to Sunday afternoon?",
+      "expected_answer_gist": "Classes moved from Saturday 09:00 to Sunday 14:00 (from Jul 5) because the school needs the Saturday rooms for grade-9 exam prep until end of August and more volunteers are free on Sundays. Supersedes the original Saturday-morning decision.",
+      "expected_keys": [
+        "D4",
+        "D3"
+      ],
+      "expected_citation_msg_ids": [
+        "m0358",
+        "m0026"
+      ]
+    },
+    {
+      "q": "How do people donate to AIV, and why that method?",
+      "expected_answer_gist": "Donations go through VietQR bank transfer on the club account (Momo only as a fallback) — chosen for traceability: every donation lands in one account with sender name and note, which makes the finance report reconciliation clean.",
+      "expected_keys": [
+        "D5"
+      ],
+      "expected_citation_msg_ids": [
+        "m0148",
+        "m0150"
+      ]
+    }
+  ]
+}

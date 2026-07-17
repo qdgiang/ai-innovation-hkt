@@ -1,0 +1,19 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# local dev artifacts
+data/dev.db
+data/_gen/
+logs/
+
+# frontend (Phase 3)
+node_modules/
+.next/
+dist/

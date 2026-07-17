@@ -1,0 +1,89 @@
+# AIV all-hands — 2026-06-28 — attendees: linh, mai, phuong, duc, an, khoa, tuan
+[00:00] Linh: ok everyone, can you hear me? doing a quick roll call
+[00:08] Mai: here!
+[00:12] Phuong: yes, hearing you fine
+[00:18] Duc: có mặt
+[00:24] An: here here
+[00:31] Khoa: yep, sorry, was grabbing water
+[00:38] Tuan: present. also Thao says she can't join, she's at her cousin's wedding
+[00:46] Linh: noted, cảm ơn Tuan. Huong and Minh also sent apologies, so it's the seven of us
+[01:02] Linh: agenda: venue recap, fair date, budget, permit, then class stuff and comms. 15 mins max, promise
+[01:18] Linh: first, quick recap for anyone who missed the chat — we're switching the fair venue to Nguyen Du School gym
+[01:29] Duc: yeah the community hall double-booked us, gym is actually bigger anyway
+[01:38] Khoa: gym has that echo though, duc you checked the sound?
+[01:46] Duc: went there Thursday, echo is fine if we keep speakers off the back wall. stage fits too
+[02:14] Linh: and the principal is happy to host as long as we clean up after. so venue is settled
+[02:31] Linh: ok next — the date. we've been going back and forth, need to lock it today
+[02:41] Mai: what were the options again?
+[02:47] Linh: Saturday August 2nd, or push to August 16th if we're scared of rain
+[02:56] Duc: it's rain season either way tbh. August 16 is not magically drier
+[03:05] Khoa: my cousin got married Aug 9 last year, poured all day. no date is safe lol
+[03:13] Phuong: from comms side, earlier is better. gives sponsors a clean 5 weeks
+[03:22] Tuan: also if we go 16th it collides with the mid-August class showcase we promised the kids
+[03:31] Mai: right, I'd rather not move the showcase again
+[03:47] Duc: and we're indoors now anyway. gym roof solves the rain thing
+[03:55] Linh: that's honestly the strongest point. the rain backup was the whole reason for hesitating
+[04:04] Khoa: so… gym = rain plan built in
+[04:11] Linh: ok, calling it. the fair is locked for Saturday August 2nd, 2026. no more date talk after today nhé
+[04:22] Phuong: locked. I'll tell Huong so she can put it in the sponsor deck
+[04:37] Duc: finally. I can book the sound guy now
+[04:58] Linh: ok, budget. Phuong, you have Huong's numbers?
+[05:06] Phuong: yes, she sent me the sheet last night since she couldn't make it. reading the highlights
+[05:16] Phuong: stage and sound quote is 8 million, tents and tables 4.5, banners and printing about 3
+[05:27] Phuong: prizes and kids' materials 4, food for volunteers 2.5, and she wants a 3 million contingency
+[05:38] Duc: the 8 for sound includes setup teardown? or is that extra
+[05:46] Phuong: includes both, she double checked with the vendor
+[06:31] Linh: so it totals to what, 25?
+[06:38] Phuong: 25 flat, yeah. Huong's recommendation is we cap it there and cut prizes first if something runs over
+[06:49] Linh: agreed. let's set the fair budget cap at 25 million VND. anything above that comes back to me before we spend
+[07:00] Mai: works for education, our side is small anyway
+[07:07] Duc: fine by me, I'll keep the vendors honest
+[07:44] Linh: next, the not-fun one. the district event permit
+[07:52] Khoa: still nothing?
+[07:58] Linh: still pending. I submitted the application two weeks ago, called the ward office twice this week, no response yet
+[08:09] Duc: two weeks is long even for them
+[08:16] Linh: I know. I'll go in person Tuesday morning, paper copy in hand, see if that shakes something loose
+[08:27] Mai: do we have a plan B if it drags?
+[08:34] Linh: not really, we can't run the fair without it. that's why I'm flagging it — it's our biggest open risk right now
+[08:45] Phuong: should we hold the public announcement until it clears?
+[08:53] Linh: teasers are fine, but no official date post until the permit is in hand. sorry An
+[09:02] An: fineee. teasers it is
+[09:09] Tuan: my uncle works near the district office, want me to ask who handles event permits?
+[09:18] Linh: yes actually, a name would help a lot. anyway, action on me — I keep chasing the ward office and report back in the chat
+[09:35] Linh: ok switching to education. Mai, quick update?
+[09:42] Mai: classes are steady. Scratch group is 14 kids now, Python 9. two new kids joined last Sunday
+[09:53] Tuan: the Python kids finished their guessing game project, some of them are genuinely fast
+[10:02] Mai: one of them asked Tuan if he gets paid in candy. accurate honestly
+[10:10] Khoa: hah. volunteer side — I need two more helpers for the July 12 session, Thao is out that week
+[10:21] Mai: I'll ask in the parents group, some of the older siblings help sometimes
+[10:30] Khoa: perfect. also for the fair I'll need like 15 volunteers total, will post a signup sheet this week
+[10:41] Duc: put me down for setup crew
+[10:47] Khoa: you ARE the setup crew anh
+[10:53] Linh: what about the kids' showcase at the fair? demo booth still the plan?
+[11:02] Mai: yes, Scratch games on two laptops plus the robot cars if Tuan fixes the wheels
+[11:12] Tuan: wheels are fixed, it was a battery thing. don't ask how long that took me
+[11:26] Linh: nice. Phuong, comms roundup?
+[11:33] Phuong: sponsor side Huong has three warm leads, one bakery basically confirmed for the food stall
+[11:44] An: engagement is up since Thao's classroom photos, the one with the kid debugging on the floor did numbers
+[11:54] Phuong: Minh's t-shirt design is at v2, he wants feedback by Wednesday
+[12:03] Duc: as long as it's not neon orange again
+[12:10] Phuong: no promises
+[12:33] Mai: can the kids be in posts btw? some parents are strict about photos
+[12:42] Phuong: only with the signed consent forms, same rule as always. An keeps the list
+[12:57] Linh: ok, wrapping up. action items — me: permit chase, in person Tuesday
+[13:06] Linh: Duc books sound and confirms gym access times with the school
+[13:14] Duc: on it
+[13:20] Linh: Phuong confirms the 25 cap with Huong and gets the sponsor deck updated with Aug 2
+[13:29] Phuong: yes, and t-shirt feedback to Minh by Wednesday, everyone please actually look at it
+[13:39] Linh: Khoa posts the volunteer signup, Mai and Tuan keep the showcase on track
+[13:48] Khoa: sheet goes up tomorrow
+[13:54] Tuan: showcase is fine, robots live
+[14:00] Linh: An, teasers only until permit clears, then full announcement
+[14:08] An: teasers only, got it
+[14:14] Mai: one more thing — next all-hands date?
+[14:21] Linh: two weeks, July 12? same time
+[14:28] Khoa: that's the session I'm short on volunteers, can we do 5pm instead
+[14:35] Linh: 5pm July 12 works. ok that's everything from me
+[14:42] Duc: under 15 minutes, chị Linh delivering on promises for once
+[14:49] Linh: I'm framing this comment. thanks everyone, cảm ơn nha
+[15:00] An: byeee

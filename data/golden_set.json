@@ -1,0 +1,488 @@
+{
+  "windows": [
+    {
+      "window_id": "w01",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0030",
+        "m0031",
+        "m0032",
+        "m0035",
+        "m0036",
+        "m0038",
+        "m0039",
+        "m0040",
+        "m0041"
+      ],
+      "note": "around D1: Charity fair venue = Phuong Liet Community Center",
+      "expected_records": [
+        {
+          "key": "D1",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w02",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0232",
+        "m0233",
+        "m0234",
+        "m0243",
+        "m0244",
+        "m0245",
+        "m0246",
+        "m0247",
+        "m0248",
+        "m0249",
+        "m0250",
+        "m0251",
+        "m0252",
+        "m0253",
+        "m0254",
+        "m0255",
+        "m0256",
+        "m0257",
+        "m0258"
+      ],
+      "note": "around D2: Charity fair venue moved from Phuong Liet community center to Nguyen Du School gym",
+      "expected_records": [
+        {
+          "key": "D2",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w03",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0013",
+        "m0014",
+        "m0019",
+        "m0020",
+        "m0021",
+        "m0026",
+        "m0027",
+        "m0028",
+        "m0029"
+      ],
+      "note": "around D3: Weekly classes locked to Saturday 09:00",
+      "expected_records": [
+        {
+          "key": "D3",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w04",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0353",
+        "m0354",
+        "m0355",
+        "m0356",
+        "m0357",
+        "m0358",
+        "m0359",
+        "m0368",
+        "m0369"
+      ],
+      "note": "around D4: Weekend classes move to Sunday 14:00 (supersedes D3)",
+      "expected_records": [
+        {
+          "key": "D4",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w05",
+      "channel": "aiv-comms",
+      "team": "comms",
+      "message_ids": [
+        "m0143",
+        "m0144",
+        "m0145",
+        "m0146",
+        "m0147",
+        "m0148",
+        "m0149",
+        "m0150",
+        "m0151",
+        "m0152",
+        "m0153"
+      ],
+      "note": "around D5: Fair donations via VietQR bank transfer, not Momo",
+      "expected_records": [
+        {
+          "key": "D5",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w06",
+      "channel": "aiv-comms",
+      "team": "comms",
+      "message_ids": [
+        "m0331",
+        "m0334",
+        "m0335",
+        "m0336",
+        "m0337",
+        "m0338",
+        "m0339",
+        "m0340",
+        "m0349"
+      ],
+      "note": "around D6: Fair t-shirts: InTheXanh, 120 shirts, navy",
+      "expected_records": [
+        {
+          "key": "D6",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w07",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0167",
+        "m0168",
+        "m0169",
+        "m0178",
+        "m0179",
+        "m0180",
+        "m0181",
+        "m0182",
+        "m0183"
+      ],
+      "note": "around D7: Buddy system for new volunteers",
+      "expected_records": [
+        {
+          "key": "D7",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w08",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0455",
+        "m0456",
+        "m0459",
+        "m0460",
+        "m0464",
+        "m0465",
+        "m0466",
+        "m0467",
+        "m0468"
+      ],
+      "note": "around D8: Fair entry is FREE with donation box at the gate",
+      "expected_records": [
+        {
+          "key": "D8",
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "window_id": "w09",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0281",
+        "m0282",
+        "m0288",
+        "m0289",
+        "m0290",
+        "m0297",
+        "m0298",
+        "m0299",
+        "m0300"
+      ],
+      "note": "around B1: Sound-system rental vendor not replying (first passing mention)",
+      "expected_records": [
+        {
+          "key": "B1",
+          "type": "blocker"
+        }
+      ]
+    },
+    {
+      "window_id": "w10",
+      "channel": "aiv-comms",
+      "team": "comms",
+      "message_ids": [
+        "m0192",
+        "m0198",
+        "m0199",
+        "m0205",
+        "m0206",
+        "m0218",
+        "m0219",
+        "m0220",
+        "m0221"
+      ],
+      "note": "around B2: No access to NPO bank statements — e-banking handover pending from former treasurer",
+      "expected_records": [
+        {
+          "key": "B2",
+          "type": "blocker"
+        }
+      ]
+    },
+    {
+      "window_id": "w11",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0240",
+        "m0241",
+        "m0242",
+        "m0261",
+        "m0262",
+        "m0264",
+        "m0265",
+        "m0266",
+        "m0267",
+        "m0268",
+        "m0269"
+      ],
+      "note": "around B3: Classroom projector dead; school IT says replacement 'next month, maybe'",
+      "expected_records": [
+        {
+          "key": "B3",
+          "type": "blocker"
+        }
+      ]
+    },
+    {
+      "window_id": "w12",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0441",
+        "m0442",
+        "m0443",
+        "m0444",
+        "m0445",
+        "m0447",
+        "m0448",
+        "m0449",
+        "m0450"
+      ],
+      "note": "around B4: T-shirt printing delayed by InTheXanh, no ETA",
+      "expected_records": [
+        {
+          "key": "B4",
+          "type": "blocker"
+        }
+      ]
+    },
+    {
+      "window_id": "w13",
+      "channel": "aiv-comms",
+      "team": "comms",
+      "message_ids": [
+        "m0060",
+        "m0063",
+        "m0064",
+        "m0068",
+        "m0069",
+        "m0070",
+        "m0071",
+        "m0072",
+        "m0073",
+        "m0074",
+        "m0075"
+      ],
+      "note": "around B5: No admin access to AIV Facebook page",
+      "expected_records": [
+        {
+          "key": "B5",
+          "type": "blocker"
+        }
+      ]
+    },
+    {
+      "window_id": "w14",
+      "channel": "aiv-comms",
+      "team": "comms",
+      "message_ids": [
+        "m0071",
+        "m0072",
+        "m0073",
+        "m0074",
+        "m0075",
+        "m0082",
+        "m0083",
+        "m0084"
+      ],
+      "note": "around S-w24-comms: Sponsor letter with 3-tier sponsorship table ready",
+      "expected_records": [
+        {
+          "key": "S-w24-comms",
+          "type": "status"
+        }
+      ]
+    },
+    {
+      "window_id": "w15",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0089",
+        "m0090",
+        "m0091",
+        "m0092",
+        "m0093",
+        "m0094",
+        "m0095",
+        "m0114",
+        "m0115"
+      ],
+      "note": "around S-w24-education: Schedule locked to Saturdays 09:00 and parents not",
+      "expected_records": [
+        {
+          "key": "S-w24-education",
+          "type": "status"
+        }
+      ]
+    },
+    {
+      "window_id": "w16",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0062",
+        "m0076",
+        "m0077",
+        "m0078",
+        "m0079",
+        "m0080",
+        "m0081",
+        "m0098",
+        "m0099"
+      ],
+      "note": "around S-w24-events: Venue settled (Phuong Liet Community Center, 1tr2/",
+      "expected_records": [
+        {
+          "key": "S-w24-events",
+          "type": "status"
+        }
+      ]
+    },
+    {
+      "window_id": "w17",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0217",
+        "m0222",
+        "m0223",
+        "m0224",
+        "m0229",
+        "m0230",
+        "m0231",
+        "m0232"
+      ],
+      "note": "distractor X2: 20k VND entry ticket idea floated — no conclusion",
+      "expected_records": []
+    },
+    {
+      "window_id": "w18",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0362",
+        "m0363",
+        "m0364",
+        "m0365",
+        "m0374",
+        "m0375",
+        "m0376",
+        "m0377",
+        "m0378",
+        "m0379",
+        "m0380",
+        "m0381"
+      ],
+      "note": "distractor X3: Parking fee at the fair — postponed, never revisited",
+      "expected_records": []
+    },
+    {
+      "window_id": "w19",
+      "channel": "aiv-events",
+      "team": "events",
+      "message_ids": [
+        "m0001",
+        "m0002",
+        "m0003",
+        "m0004",
+        "m0010",
+        "m0011",
+        "m0017",
+        "m0018",
+        "m0022",
+        "m0023",
+        "m0030",
+        "m0031"
+      ],
+      "note": "pure chatter",
+      "expected_records": []
+    },
+    {
+      "window_id": "w20",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0027",
+        "m0028",
+        "m0029",
+        "m0037",
+        "m0045",
+        "m0046",
+        "m0055",
+        "m0056",
+        "m0057",
+        "m0065",
+        "m0066",
+        "m0067"
+      ],
+      "note": "pure chatter",
+      "expected_records": []
+    },
+    {
+      "window_id": "w21",
+      "channel": "aiv-education",
+      "team": "education",
+      "message_ids": [
+        "m0095",
+        "m0114",
+        "m0115",
+        "m0116",
+        "m0117",
+        "m0118",
+        "m0119",
+        "m0134",
+        "m0135",
+        "m0136",
+        "m0137",
+        "m0138"
+      ],
+      "note": "pure chatter",
+      "expected_records": []
+    }
+  ]
+}
