@@ -26,6 +26,21 @@ from evermind.surfacing.service import SurfacingService
 CONSUMER_NAME = "surfacing"
 
 
+def _assigned_task_id(ops: list[dict] | None) -> int | None:
+    """Return the single existing task targeted by assignment operations."""
+    task_ids: set[int] = set()
+    for op in ops or []:
+        if op.get("facet") != "assignment":
+            continue
+        target = op.get("target")
+        if not isinstance(target, str) or not target.startswith("task:"):
+            continue
+        raw_id = target.removeprefix("task:")
+        if raw_id.isdigit() and int(raw_id) > 0:
+            task_ids.add(int(raw_id))
+    return next(iter(task_ids)) if len(task_ids) == 1 else None
+
+
 class SurfacingConsumer:
     def __init__(self, session: Session):
         self.session = session
@@ -94,6 +109,7 @@ class SurfacingConsumer:
     def _on_decision_effective(self, event: DomainEvent) -> None:
         payload = event.payload
         self._resolve_proposal_items(payload["decision_id"], "approved")
+        task_id = payload.get("new_task_id") or _assigned_task_id(payload.get("ops"))
         recipients = {payload.get("decided_by_user_id"), payload.get("approved_by")}
         for op in payload.get("ops") or []:
             # newly-assigned PICs learn about work landing on them
@@ -108,6 +124,7 @@ class SurfacingConsumer:
                     "decision_id": payload["decision_id"],
                     "description": payload.get("description"),
                     "new_task_id": payload.get("new_task_id"),
+                    "task_id": task_id,
                     "windowed": payload.get("windowed", False),
                 })
 

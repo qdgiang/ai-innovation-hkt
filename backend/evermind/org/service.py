@@ -15,13 +15,18 @@ from sqlalchemy.orm import Session
 
 from evermind.contracts.enums import UserStatus
 from evermind.org.models import (
-    ChatGroup, ConfigOp, Party, Project, Team, User, UserIdentity, UserTeam,
+    ChatGroup, ConfigOp, Party, Project, Team, User, UserIdentity,
+    UserIdentityAlias, UserTeam,
 )
 
 
 def _utcnow() -> datetime:
     """Storage stays UTC (G54); columns are tz-naive UTC."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _normalize_username(username: str) -> str:
+    return username.strip().lstrip("@").casefold()
 
 
 class OrgService:
@@ -159,6 +164,52 @@ class OrgService:
             )
         )
         return self.get_user(identity.user_id) if identity else None
+
+    def resolve_username_alias(
+        self, platform: str, connector_scope: str, username: str
+    ) -> User | None:
+        """Return a user only for an unambiguous learned scoped alias.
+
+        This intentionally has no display-name or `users.handle` fallback.
+        """
+        normalized = _normalize_username(username)
+        if not normalized:
+            return None
+        user_ids = list(self.session.scalars(
+            select(UserIdentityAlias.user_id).where(
+                UserIdentityAlias.platform == platform,
+                UserIdentityAlias.connector_scope == connector_scope,
+                UserIdentityAlias.username == normalized,
+            ).distinct()
+        ))
+        return self.get_user(user_ids[0]) if len(user_ids) == 1 else None
+
+    def learn_username_alias_from_stable_identity(
+        self,
+        platform: str,
+        connector_scope: str,
+        platform_user_id: str,
+        username: str,
+    ) -> User | None:
+        """Record an observed alias only after resolving its stable sender ID."""
+        user = self.resolve_identity(platform, connector_scope, platform_user_id)
+        normalized = _normalize_username(username)
+        if user is None or not normalized:
+            return None
+        existing = self.session.scalar(select(UserIdentityAlias).where(
+            UserIdentityAlias.platform == platform,
+            UserIdentityAlias.connector_scope == connector_scope,
+            UserIdentityAlias.username == normalized,
+            UserIdentityAlias.user_id == user.id,
+        ))
+        if existing is None:
+            self.session.add(UserIdentityAlias(
+                user_id=user.id,
+                platform=platform,
+                connector_scope=connector_scope,
+                username=normalized,
+            ))
+        return user
 
     def match_party_alias(self, text: str) -> Party | None:
         """SIG-2 waiting_on resolution: case-insensitive name/alias containment.

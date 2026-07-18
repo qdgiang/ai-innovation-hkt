@@ -7,7 +7,7 @@ anything to any platform (settled #20 — no send capability exists, structurall
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -29,7 +29,15 @@ class Message(Base):
     # resolution prefers this column (ingestion/identity.py).
     author_platform_id: Mapped[str | None]
     ts: Mapped[datetime]
+    # Capture order is deliberately separate from the platform event time: a
+    # delayed Telegram update must not be skipped by a replay cursor.
+    captured_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc)
+    )
     text: Mapped[str]  # caption when kind is media
+    # Compact platform provenance only. Task assignment remains owned by
+    # TaskAssignment, never by captured messages.
+    mentions: Mapped[list[dict] | None] = mapped_column(default=list)
     thread_ref: Mapped[int | None]  # reply target (message id)
     raw_ref: Mapped[str]  # provenance: corpus line / platform update id
     kind: Mapped[MessageKind] = mapped_column(default=MessageKind.TEXT)

@@ -72,6 +72,26 @@ class UserIdentity(Base):
     platform_user_id: Mapped[str]
 
 
+class UserIdentityAlias(Base):
+    """A username observed from a sender already identified by stable ID.
+
+    Telegram usernames are mutable and can be reused, so an alias is not an
+    identity key. Multiple users may retain the same scoped alias; callers
+    resolve it only when it maps to exactly one user.
+    """
+
+    __tablename__ = "user_identity_aliases"
+    __table_args__ = (
+        UniqueConstraint("platform", "connector_scope", "username", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    platform: Mapped[str]
+    connector_scope: Mapped[str]
+    username: Mapped[str]
+
+
 class UserTeam(Base):
     """Matrix membership (G36)."""
 

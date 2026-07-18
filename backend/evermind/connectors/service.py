@@ -4,12 +4,17 @@ table access").
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from evermind.connectors.models import Message, MessageRevision
+
+
+def _capture_time(message: Message) -> datetime:
+    value = getattr(message, "captured_at", message.ts)
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
 class ConnectorsService:
@@ -26,30 +31,56 @@ class ConnectorsService:
         )
         return list(self.session.scalars(stmt))
 
-    def read_pending(self, group_id: int, *, after: datetime,
-                     limit: int) -> list[Message]:
+    def read_pending(self, group_id: int, *, after: datetime, limit: int,
+                     after_id: int = 0) -> list[Message]:
         """Time-ordered unprocessed slice for the extraction lane (ING-2).
 
-        Ordered by (ts, id) — NOT id alone — because live sources' synthetic
-        ids are not time-ordered (telegram folds a hash into its id range).
-        When the cap lands mid-second the window extends through every message
-        sharing the boundary ts: the extraction cursor is second-granular, so
-        a strict `ts >` next window would skip the remainder forever.
+        Ordered by capture tuple `(captured_at, id)`. The strict tuple cursor
+        makes a bounded page safe even when many rows share a timestamp.
         """
+        captured_at = getattr(Message, "captured_at", Message.ts)
         stmt = (
             select(Message)
-            .where(Message.group_id == group_id, Message.ts > after,
+            .where(Message.group_id == group_id,
+                   or_(captured_at > after,
+                       and_(captured_at == after, Message.id > after_id)),
                    Message.tombstoned_at.is_(None))
-            .order_by(Message.ts, Message.id)
-            .limit(limit + 64)
+            .order_by(captured_at, Message.id)
+            .limit(limit)
         )
-        rows = list(self.session.scalars(stmt))
-        if len(rows) <= limit:
-            return rows
-        cut, boundary = limit, rows[limit - 1].ts
-        while cut < len(rows) and rows[cut].ts == boundary:
-            cut += 1
-        return rows[:cut]
+        return list(self.session.scalars(stmt))
+
+    def hydrate_context(self, group_id: int, pending: list[Message], *,
+                        tail_limit: int = 10, reply_depth: int = 2) -> list[Message]:
+        """Return citable history only; callers keep pending anchors separate."""
+        if not pending:
+            return []
+        pending_ids = {message.id for message in pending}
+        captured_at = getattr(Message, "captured_at", Message.ts)
+        first = min(_capture_time(message) for message in pending)
+        tail = list(self.session.scalars(
+            select(Message).where(Message.group_id == group_id, captured_at < first,
+                                  Message.tombstoned_at.is_(None))
+            .order_by(captured_at.desc(), Message.id.desc()).limit(tail_limit)
+        ))
+        by_id = {message.id: message for message in tail}
+        wanted = {message.thread_ref for message in pending if message.thread_ref}
+        visited: set[int] = set()
+        for _ in range(reply_depth):
+            wanted -= pending_ids | visited
+            if not wanted:
+                break
+            visited |= wanted
+            parents = list(self.session.scalars(
+                select(Message).where(Message.group_id == group_id,
+                                      Message.id.in_(wanted),
+                                      Message.tombstoned_at.is_(None))
+            ))
+            by_id.update({message.id: message for message in parents})
+            wanted = {message.thread_ref for message in parents if message.thread_ref}
+        return sorted(by_id.values(), key=lambda message: (
+            _capture_time(message), message.id
+        ))
 
     def current_text(self, message_id: int) -> tuple[str, int]:
         """(text, rev) at the current revision — for citation `rev_at_capture`/`rev_at_act`."""

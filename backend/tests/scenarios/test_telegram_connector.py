@@ -4,11 +4,17 @@ HTTP client stands in for `httpx`, matching `TelegramConnector`'s narrow
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from evermind.connectors.models import GroupMember, Message, MessageRevision
 from evermind.connectors.telegram import TelegramConnector
+from evermind.org.models import UserIdentity
+from evermind.org.service import OrgService
 
 
 class FakeResponse:
@@ -52,6 +58,122 @@ def test_poll_updates_stores_a_message_and_advances_offset(db_session: Session):
     assert messages[0].author_platform_id == "111"  # [D5] the stable resolution key
     assert messages[0].group_id == 7
     assert messages[0].text == "chào cả nhà"
+
+
+def test_poll_updates_preserves_mention_provenance_and_capture_time(db_session: Session):
+    """Entity metadata is retained for later, identity-safe extraction."""
+    http = FakeHttpClient({
+        "ok": True,
+        "result": [{
+            "update_id": 100,
+            "message": {
+                "message_id": 5, "from": {"id": 111, "username": "linh"},
+                "chat": {"id": -1001, "type": "supergroup"},
+                "date": 1735689600, "text": "@linh asks Alice and Bob",
+                "entities": [
+                    {"type": "mention", "offset": 0, "length": 5},
+                    {"type": "text_mention", "offset": 11, "length": 5,
+                     "user": {"id": 222, "username": "alice", "first_name": "Alice"}},
+                    {"type": "text_link", "offset": 21, "length": 3,
+                     "url": "tg://user?id=333"},
+                ],
+            },
+        }],
+    })
+
+    TelegramConnector(db_session, "fake-token", http=http).poll_updates()
+
+    message = db_session.scalar(select(Message).where(Message.source == "telegram"))
+    assert message is not None
+    assert message.captured_at is not None
+    assert message.mentions == [
+        {"platform_user_id": None, "username": "linh", "display_name": "@linh", "source": "mention"},
+        {"platform_user_id": "222", "username": "alice", "display_name": "Alice", "source": "text_mention"},
+        {"platform_user_id": "333", "username": None, "display_name": "Bob", "source": "tg://user"},
+    ]
+
+
+def test_telegram_username_alias_is_learned_only_from_stable_author_identity(db_session: Session, org_ids):
+    linh_id = org_ids["users"]["linh"]
+    db_session.add(UserIdentity(
+        user_id=linh_id, platform="telegram", connector_scope="default",
+        platform_user_id="111",
+    ))
+    db_session.flush()
+
+    payload = {
+        "ok": True,
+        "result": [{
+            "update_id": 1,
+            "message": {
+                "message_id": 1, "from": {"id": 111, "username": "learned_handle"},
+                "chat": {"id": -1001}, "date": 1735689600, "text": "hello",
+            },
+        }],
+    }
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(payload)).poll_updates()
+
+    assert OrgService(db_session).resolve_username_alias(
+        "telegram", "default", "learned_handle"
+    ).id == linh_id
+
+
+def test_telegram_username_alias_collision_is_unresolved(db_session: Session, org_ids):
+    db_session.add_all([
+        UserIdentity(user_id=org_ids["users"]["linh"], platform="telegram",
+                     connector_scope="default", platform_user_id="111"),
+        UserIdentity(user_id=org_ids["users"]["mai"], platform="telegram",
+                     connector_scope="default", platform_user_id="222"),
+    ])
+    db_session.flush()
+    for update_id, user_id in ((1, 111), (2, 222)):
+        TelegramConnector(db_session, "fake-token", http=FakeHttpClient({
+            "ok": True,
+            "result": [{
+                "update_id": update_id,
+                "message": {
+                    "message_id": update_id,
+                    "from": {"id": user_id, "username": "reused_handle"},
+                    "chat": {"id": -1001}, "date": 1735689600, "text": "hello",
+                },
+            }],
+        })).poll_updates()
+
+    assert OrgService(db_session).resolve_username_alias(
+        "telegram", "default", "reused_handle"
+    ) is None
+
+
+def test_unknown_telegram_author_never_learns_a_handle_alias(db_session: Session, org_ids):
+    """A matching display handle is not evidence of platform identity."""
+    payload = {
+        "ok": True,
+        "result": [{
+            "update_id": 1,
+            "message": {
+                "message_id": 1, "from": {"id": 999, "username": "linh"},
+                "chat": {"id": -1001}, "date": 1735689600, "text": "hello",
+            },
+        }],
+    }
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(payload)).poll_updates()
+
+    assert OrgService(db_session).resolve_username_alias("telegram", "default", "linh") is None
+
+
+def test_telegram_synthetic_ids_are_deterministic():
+    script = (
+        "from evermind.connectors.telegram import TelegramConnector; "
+        "print(TelegramConnector._synthetic_id({'chat': {'id': -1001}, 'message_id': 5}))"
+    )
+    outputs = [
+        subprocess.check_output(
+            [sys.executable, "-c", script], text=True,
+            env={**os.environ, "PYTHONHASHSEED": hash_seed},
+        ).strip()
+        for hash_seed in ("1", "2")
+    ]
+    assert outputs[0] == outputs[1]
 
 
 def test_poll_updates_resolves_reply_to_message(db_session: Session):

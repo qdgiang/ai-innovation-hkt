@@ -105,7 +105,8 @@ class DecisionsService:
 
     # ══════════════════════════════════════════════════════════ entrypoint
 
-    def handle(self, command: Command, *, commit: bool = True) -> dict:
+    def handle(self, command: Command, *, commit: bool = True,
+               rollback_on_error: bool = True) -> dict:
         """The one write path (D3). Returns the command outcome — also the shape
         stored in `processed_commands.outcome` so retries replay it [EVM-021]."""
         command_id = str(command.client_command_id)
@@ -125,7 +126,8 @@ class DecisionsService:
             else:
                 self.session.flush()
         except Exception:
-            self.session.rollback()
+            if rollback_on_error:
+                self.session.rollback()
             raise
         return outcome
 

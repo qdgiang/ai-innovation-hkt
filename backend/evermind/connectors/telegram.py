@@ -23,12 +23,18 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Callable, Protocol
+from hashlib import blake2s
+from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from evermind.connectors.models import GroupMember, Message
 from evermind.connectors.service import ConnectorsService
+from evermind.org.service import OrgService
+
+
+TELEGRAM_CONNECTOR_SCOPE = "default"
 
 
 class HttpClient(Protocol):
@@ -108,14 +114,22 @@ class TelegramConnector:
         if self._already_ingested(raw_ref):
             return  # restart redelivery (in-memory offset) — idempotent skip
         from_user = msg.get("from", {})
+        author_platform_id = str(from_user["id"]) if "id" in from_user else None
+        if author_platform_id is not None and from_user.get("username"):
+            OrgService(self.session).learn_username_alias_from_stable_identity(
+                "telegram", TELEGRAM_CONNECTOR_SCOPE, author_platform_id,
+                from_user["username"],
+            )
         message = Message(
             id=self._synthetic_id(msg),
             source="telegram",
             group_id=self._resolve_group_id(msg["chat"]),
             author_identity=from_user.get("username") or str(from_user.get("id", "unknown")),
-            author_platform_id=str(from_user["id"]) if "id" in from_user else None,
+            author_platform_id=author_platform_id,
             ts=datetime.fromtimestamp(msg["date"], tz=timezone.utc),
+            captured_at=datetime.now(timezone.utc),
             text=msg.get("text", ""),
+            mentions=self._mentions(msg),
             thread_ref=self._synthetic_id(msg["reply_to_message"])
             if msg.get("reply_to_message") else None,
             raw_ref=raw_ref,
@@ -168,5 +182,63 @@ class TelegramConnector:
         # — same "each source gets its own numbering scheme" as
         # connectors/transcript.py. A hash collision is theoretically
         # possible; not a concern at this system's demo scale.
-        digest = hash((msg["chat"]["id"], msg["message_id"])) % 100_000_000
+        identity = f"{msg['chat']['id']}:{msg['message_id']}".encode("utf-8")
+        digest = int.from_bytes(blake2s(identity, digest_size=8).digest(), "big") % 100_000_000
         return 2_000_000_000 + digest
+
+    @staticmethod
+    def _mentions(msg: dict) -> list[dict]:
+        """Extract Telegram entity provenance without inferring identity."""
+        text = msg.get("text", "")
+        mentions: list[dict] = []
+        for entity in msg.get("entities", []):
+            entity_type = entity.get("type")
+            display_name = TelegramConnector._entity_text(text, entity)
+            if entity_type == "mention":
+                username = display_name.strip().lstrip("@") or None
+                mentions.append({
+                    "platform_user_id": None,
+                    "username": username,
+                    "display_name": display_name or None,
+                    "source": "mention",
+                })
+            elif entity_type == "text_mention" and isinstance(entity.get("user"), dict):
+                user = entity["user"]
+                name = " ".join(filter(None, [user.get("first_name"), user.get("last_name")]))
+                mentions.append({
+                    "platform_user_id": str(user["id"]) if "id" in user else None,
+                    "username": user.get("username"),
+                    "display_name": name or display_name or None,
+                    "source": "text_mention",
+                })
+            elif entity.get("url"):
+                platform_user_id = TelegramConnector._tg_user_id(entity["url"])
+                if platform_user_id is not None:
+                    mentions.append({
+                        "platform_user_id": platform_user_id,
+                        "username": None,
+                        "display_name": display_name or None,
+                        "source": "tg://user",
+                    })
+        return mentions
+
+    @staticmethod
+    def _entity_text(text: str, entity: dict) -> str:
+        """Telegram entity offsets are UTF-16 code-unit offsets, not Python indexes."""
+        try:
+            offset = int(entity["offset"])
+            length = int(entity["length"])
+        except (KeyError, TypeError, ValueError):
+            return ""
+        if offset < 0 or length < 0:
+            return ""
+        encoded = text.encode("utf-16-le")
+        return encoded[offset * 2:(offset + length) * 2].decode("utf-16-le", errors="ignore")
+
+    @staticmethod
+    def _tg_user_id(url: str) -> str | None:
+        parsed = urlparse(url)
+        if parsed.scheme != "tg" or parsed.netloc != "user":
+            return None
+        user_id = parse_qs(parsed.query).get("id", [""])[0]
+        return user_id if user_id.isdigit() else None

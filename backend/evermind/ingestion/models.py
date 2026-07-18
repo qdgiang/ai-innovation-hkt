@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from evermind.db.base import Base
@@ -31,6 +31,9 @@ class IngestCursor(Base):
 
     group_id: Mapped[int] = mapped_column(primary_key=True)
     high_water_seq: Mapped[int] = mapped_column(default=0)
+    # Nullable during a rolling upgrade; legacy epoch cursor remains the fallback.
+    captured_at: Mapped[datetime | None]
+    message_id: Mapped[int | None]
 
 
 class ExtractionWindow(Base):
@@ -47,6 +50,8 @@ class ExtractionWindow(Base):
     tokens_out: Mapped[int | None]
     started_at: Mapped[datetime | None]
     finished_at: Mapped[datetime | None]
+    error_count: Mapped[int] = mapped_column(default=0)
+    error_summary: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class Materialization(Base):
