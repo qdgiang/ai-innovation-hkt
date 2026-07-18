@@ -16,7 +16,9 @@ export default async function Home({
   let projects: WsProject[] = [];
   let bundle: WsBundle | null = null;
   try {
-    projects = await api.get<WsProject[]>("/projects");
+    // persona rides along: the list comes back scoped to the viewer's
+    // projects (phân-quyền: view theo project; coordinator sees all)
+    projects = await api.get<WsProject[]>("/projects", persona);
     const id = project && /^\d+$/.test(project)
       ? Number(project)
       : projects[0]?.id ?? 1;

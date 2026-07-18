@@ -8,11 +8,11 @@ This is a BFF composition layer: it reads the projections other modules own
 """
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from evermind.api.deps import get_session
+from evermind.api.deps import get_session, persona_user_id
 from evermind.api.routers.decisions_router import _serialize
 from evermind.connectors.models import Message
 from evermind.contracts.enums import DecisionStatus, TaskStatus
@@ -29,8 +29,17 @@ ACTIVE_TASK_STATUSES = (TaskStatus.TODO, TaskStatus.DOING, TaskStatus.BLOCKED)
 
 
 @router.get("/projects")
-def list_projects(session: Session = Depends(get_session)):
+def list_projects(session: Session = Depends(get_session),
+                  x_persona: str | None = Header(None)):
+    """Phân-quyền spec 'View theo project': with a persona header the list is
+    scoped to that user's projects (coordinator sees all). Header-less calls
+    (curl/dev) keep the full list — the bundle endpoint is the hard gate."""
     from evermind.org.models import Project
+
+    org = OrgService(session)
+    viewer = org.get_user_by_handle(x_persona) if x_persona else None
+    allowed = (set(org.project_ids_of_user(viewer.id))
+               if viewer is not None and viewer.role_rank < 3 else None)
 
     counts = dict(session.execute(
         select(Task.project_id, func.count(Task.id)).group_by(Task.project_id)
@@ -39,6 +48,7 @@ def list_projects(session: Session = Depends(get_session)):
         {"id": p.id, "name": p.name, "kind": p.kind.value, "status": p.status.value,
          "end_date": p.end_date, "task_count": counts.get(p.id, 0)}
         for p in session.scalars(select(Project).order_by(Project.id))
+        if allowed is None or p.id in allowed
     ]
 
 
@@ -74,11 +84,16 @@ def _decision_project(decision: Decision, task_projects: dict[int, int],
 
 
 @router.get("/workspace/{project_id}")
-def workspace(project_id: int, session: Session = Depends(get_session)):
+def workspace(project_id: int, session: Session = Depends(get_session),
+              viewer_id: int = Depends(persona_user_id)):
     org = OrgService(session)
     project = org.get_project(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="unknown project")
+    # phân-quyền spec: view theo project — membership (any team) or coordinator
+    if not org.can_view_project(viewer_id, project_id):
+        raise HTTPException(status_code=403,
+                            detail="persona is not a member of this project")
 
     tasks = list(session.scalars(select(Task).where(Task.project_id == project_id)))
     task_ids = [t.id for t in tasks] or [-1]

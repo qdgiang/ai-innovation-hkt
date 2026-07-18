@@ -10,8 +10,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
-from evermind.api.deps import decisions_service, persona
+from evermind.api.deps import decisions_service, get_session, persona
+from evermind.api.evidence import leave_dashboard_evidence
 from evermind.api.routers import (
     connectors_router,
     decisions_router,
@@ -25,6 +27,7 @@ from evermind.api.routers import (
 )
 from evermind.config import settings
 from evermind.contracts.commands import Command
+from evermind.contracts.enums import CreatedFrom
 from evermind.decisions.service import DecisionsService
 
 logger = logging.getLogger(__name__)
@@ -142,13 +145,18 @@ def post_command(
     command: Command,
     service: DecisionsService = Depends(decisions_service),
     who: str = Depends(persona),
+    session: Session = Depends(get_session),
 ):
     """The single write path for every surface (D3). Validates + persona-stamps,
     hands straight to the domain — see architecture.md §The write pipeline.
     [EVM-021]: a `version_conflict` outcome renders as HTTP 409 + diff card.
+    Phân-quyền spec: a DASHBOARD command leaves its chat-evidence message
+    FIRST (same transaction) — the UI never silently mutates a task.
     """
     if command.persona != who:
         command = command.model_copy(update={"persona": who})  # persona-stamp
+    if command.created_from == CreatedFrom.DASHBOARD:
+        command = leave_dashboard_evidence(session, command)
     outcome = service.handle(command)
     if outcome.get("status") == "version_conflict":
         raise HTTPException(status_code=409, detail=outcome)
