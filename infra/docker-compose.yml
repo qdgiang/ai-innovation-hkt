@@ -35,7 +35,8 @@ services:
     build:
       context: ../frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000  # what the BROWSER dials
+      API_URL_INTERNAL: http://api:8000           # what SSR inside the container dials
     depends_on:
       - api
     ports:

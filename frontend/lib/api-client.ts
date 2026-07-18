@@ -4,7 +4,14 @@
 // module's FE piece can call directly.
 import type { CommandEnvelope } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Server components fetch from INSIDE the frontend container, where the
+// browser's localhost:8000 would point at the frontend container itself —
+// SSR must use the compose service DNS (API_URL_INTERNAL=http://api:8000);
+// the browser keeps NEXT_PUBLIC_API_URL (host-published port).
+const API_URL =
+  (typeof window === "undefined" ? process.env.API_URL_INTERNAL : undefined) ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8000";
 
 async function apiGet<T>(path: string, persona?: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
