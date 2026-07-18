@@ -10,9 +10,20 @@ blocker radar, and answers-with-receipts.
 ## State of the repo (2026-07-18)
 
 **Design: done.** `ai-docs/design-v2.md` rev 13, hardened by 48 adversarial scenario traces
-(gap register G1–G69) and 23 resolved debates. **Code: reset.** The early scaffold was
-deleted once the business logic outgrew it — implementation restarts from
-[`ai-docs/plan.md`](ai-docs/plan.md) phase P0 against a clean spec.
+(gap register G1–G69) and 23 resolved debates. **Code: P0 scaffold in place** —
+`backend/evermind/<module>/{models.py,service.py}` for every module in
+`ai-docs/architecture.md`'s layout, migration 0001, docker-compose, and a Next.js
+frontend shell (styled after `frontend_ref/`) all exist but are mostly `TODO`/`STUB`
+bodies. Two people build in parallel from here per
+[`ai-docs/work-split.md`](ai-docs/work-split.md) — module ownership (A/B), phase
+order, and the 9 A↔B interfaces are frozen there; **Claude is the merge gate**.
+
+```sh
+uv sync --project backend --all-extras --dev   # or: cd backend && uv sync --all-extras --dev
+cd backend && uv run pytest -q                 # L0 fixture tests — 7 passing
+docker compose -f infra/docker-compose.yml up -d db
+cd backend && uv run alembic upgrade head       # creates every table in data-model.md
+```
 
 ## Start here
 
@@ -32,15 +43,19 @@ deleted once the business logic outgrew it — implementation restarts from
 4. **The bot never posts to groups** — read-only capture; all output on the dashboard; humans relay.
 5. **Precision >> recall**, receipts everywhere: every extracted record cites its source messages.
 
-## Planned layout (built in plan P0)
+## Layout
 
 ```
-backend/    FastAPI modular monolith — connectors · ingestion · decisions · tasks ·
-            signals · surfacing · knowledge · api  (Postgres 16 + pgvector)
-frontend/   Next.js dashboard (persona switcher — no login in demo)
-infra/      docker-compose (dev = prod), Caddy for VPS TLS
-data-v2/    fixtures (already present)
-ai-docs/    all of the above documentation
+backend/evermind/   FastAPI modular monolith — contracts · org · llm · connectors ·
+                     ingestion · decisions · tasks · signals · surfacing · knowledge ·
+                     api · scheduler · db   (Postgres 16 + pgvector)
+backend/migrations/  Alembic; 0001 = the full data-model.md schema
+frontend/            Next.js dashboard (persona switcher — no login in demo),
+                     shell ported from frontend_ref/
+frontend_ref/         standalone HTML/JS/CSS visual reference — not shipped code
+infra/               docker-compose (dev = prod), Caddy for VPS TLS
+data-v2/             fixtures (corpus + hand-verified answer key + org seed)
+ai-docs/             all of the above documentation
 ```
 
 Everything self-hostable: `docker compose up` is the deployment story.

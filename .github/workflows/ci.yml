@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: evermind
+          POSTGRES_PASSWORD: evermind
+          POSTGRES_DB: evermind
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U evermind -d evermind"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://evermind:evermind@localhost:5432/evermind
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: v2-only guard (EVM-008 drift can never restart)
+        run: |
+          if grep -rIl --include="*.py" -E "(^|[^a-zA-Z0-9_])data/(corpus|answer_key|golden_set)" backend/ ; then
+            echo "::error::reference to deleted v1 data/ path found"; exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v3
+      - run: cd backend && uv sync --all-extras --dev
+
+      - name: migrate
+        run: cd backend && uv run alembic upgrade head
+
+      - name: lint
+        run: |
+          cd backend && uv run ruff check .
+          cd backend && uv run lint-imports
+
+      - name: L0 + L1 + L3 (pytest)
+        run: cd backend && uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd frontend && npm install
+      - run: cd frontend && npm run build
