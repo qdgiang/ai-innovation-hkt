@@ -3,8 +3,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from evermind.db.eventlog import DomainEvent
+from evermind.surfacing.consumer import SurfacingConsumer
+from evermind.surfacing.models import FeedEntry
 from evermind.surfacing.service import SurfacingService
 from evermind.tasks.models import Task, TaskAssignment, TaskTeam, TaskUpdate
 
@@ -70,6 +74,34 @@ def test_raise_radar_lamps_to_feed_notifies_every_pic(db_session: Session):
     assert len(feed_101) == 1
     assert len(feed_102) == 1
     assert feed_101[0].payload["lamp"] == "blocked"
+
+
+def test_existing_task_assignment_notifies_assignee_with_task_link(db_session: Session):
+    """An assignment extracted from chat must navigate the recipient to its task."""
+    db_session.add(DomainEvent(
+        ts=T0,
+        kind="decision_effective",
+        aggregate="decision",
+        aggregate_id=77,
+        caused_by_command="test:77",
+        payload={
+            "decision_id": 77,
+            "decided_by_user_id": 1,
+            "description": "Minh owns the venue booking",
+            "ops": [{"facet": "assignment", "target": "task:42", "value": [101]}],
+        },
+    ))
+    db_session.flush()
+
+    SurfacingConsumer(db_session).poll_and_apply()
+
+    entry = db_session.scalar(select(FeedEntry).where(
+        FeedEntry.persona_user_id == 101,
+        FeedEntry.decision_id == 77,
+    ))
+    assert entry is not None
+    assert entry.task_id == 42
+    assert entry.payload["task_id"] == 42
 
 
 # ---------------------------------------------------------------------------

@@ -248,12 +248,14 @@ duplicates by `raw_ref`. Nothing is double-captured.
 
 ## 9 · LLM extraction (ING) — decisions/tasks from plain chat
 
-Every `EXTRACTION_INTERVAL_SEC` (30, `0` = off) the scheduler cuts a
+Every `EXTRACTION_INTERVAL_SEC` (10, `0` = off) the scheduler cuts a
 window per **live-platform group** (telegram; the seeded replay corpus is
 deliberately excluded from the automatic beat): up to `EXTRACTION_BATCH_SIZE`
 (20) unprocessed messages, but only once the newest one is
-`EXTRACTION_SETTLE_SEC` (120) seconds old — an actively-flowing conversation
-is never cut mid-thought. The window goes to the configured LLM (`AI_BASE_URL` /
+`EXTRACTION_SETTLE_SEC` (15) seconds old. If chat stays active,
+`EXTRACTION_MAX_WAIT_SEC` (60) caps the wait so the oldest pending message is
+still processed; this may cut a busy conversation, but prevents starvation.
+The window goes to the configured LLM (`AI_BASE_URL` /
 `AI_MODEL` — DeepSeek) with org context (members, open tasks, party aliases);
 extracted candidates enter through the SAME command gateway as everything
 else: confidence < `CONFIDENCE_TAU` (0.8) ⇒ born proposed, and the authority
@@ -261,7 +263,8 @@ gate applies regardless — a member's extracted decision waits for the lead
 exactly like a marker would. `!marker` messages are the deterministic lane's
 property and are skipped.
 
-Demo "extract now" button (don't wait out the interval on stage):
+Demo "extract now" button skips scheduler alignment, but still observes the
+settle/max-wait guard (there is no unaudited force mode):
 
 ```sh
 curl -X POST -H "X-Persona: minhpq" "http://localhost:8000/ingestion/extract"
@@ -269,8 +272,9 @@ curl -X POST -H "X-Persona: minhpq" "http://localhost:8000/ingestion/extract"
 ```
 
 Bookkeeping: `extraction_windows` (one row per window: status, attempts,
-token spend), `ingest_cursors` (per-group high-water mark, EPOCH SECONDS of
-the last processed message ts — advances only when a window's outputs
+token spend, and bounded candidate-error accounting), `ingest_cursors`
+(per-group capture-order `(captured_at, message_id)` mark with a temporary
+legacy EPOCH fallback — advances only when a window's outputs
 persist, so an `LLM unavailable` window retries the same messages next beat
 and nothing is ever skipped). Re-extraction after a lost cursor dedups via
 `materializations` — no duplicate decisions.

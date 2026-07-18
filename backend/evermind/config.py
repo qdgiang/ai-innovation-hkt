@@ -1,6 +1,7 @@
 """Env contract — architecture.md §Configuration. `pydantic-settings` loads it;
 `infra/.env.example` is the documented contract; `.env` is git-ignored.
 """
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,8 +18,9 @@ class Settings(BaseSettings):
     # ING beat cadence in SECONDS (0 disables); a window is only cut once the
     # newest pending message is at least SETTLE_SEC old, so an
     # actively-flowing conversation is never split mid-thought.
-    extraction_interval_sec: int = 30
-    extraction_settle_sec: int = 120
+    extraction_interval_sec: int = 10
+    extraction_settle_sec: int = 15
+    extraction_max_wait_sec: int = 60
     confidence_tau: float = 0.8
     org_timezone: str = "Asia/Ho_Chi_Minh"
 
@@ -33,6 +35,18 @@ class Settings(BaseSettings):
     # 0 disables the loop (tests drive consumers explicitly).
     consumer_poll_ms: int = 2000
     run_scheduler: bool = True
+
+    @model_validator(mode="after")
+    def extraction_wait_is_valid(self):
+        if self.extraction_interval_sec < 0:
+            raise ValueError("EXTRACTION_INTERVAL_SEC must be >= 0")
+        if self.extraction_settle_sec < 0:
+            raise ValueError("EXTRACTION_SETTLE_SEC must be >= 0")
+        if self.extraction_max_wait_sec < 0:
+            raise ValueError("EXTRACTION_MAX_WAIT_SEC must be >= 0")
+        if self.extraction_max_wait_sec < self.extraction_settle_sec:
+            raise ValueError("EXTRACTION_MAX_WAIT_SEC must be >= EXTRACTION_SETTLE_SEC")
+        return self
 
 
 settings = Settings()
