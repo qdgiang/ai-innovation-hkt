@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from evermind.contracts.enums import DependencyStatus, TaskKind, TaskStatus, TaskType
@@ -63,7 +63,7 @@ class TaskUpdate(Base):
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
     actor_user_id: Mapped[int]
     kind: Mapped[str]  # status | note
-    payload: Mapped[dict]
+    payload: Mapped[dict] = mapped_column(JSON)
     created_from: Mapped[str]
     confidence: Mapped[float | None]
     source_message_id: Mapped[int | None]
