@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "purpose": "v2 org seed (design-v2 rev 9): projects, teams, groups, users, memberships, parties",
+    "note": "trang is deliberately ABSENT — she arrives mid-corpus (m0071) and must be auto-created as a provisional user (G44). platform_user_id values are synthetic.",
+    "authored": "2026-07-18"
+  },
+  "projects": [
+    {"id": "P-TT", "name": "Đêm hội Trăng Rằm 2026", "kind": "campaign", "end_date": "2026-09-26", "status": "active"},
+    {"id": "P-CL", "name": "Weekend Classes", "kind": "program", "end_date": null, "status": "active"}
+  ],
+  "teams": [
+    {"id": "TEAM-EV", "project_id": "P-TT", "name": "events"},
+    {"id": "TEAM-ED", "project_id": "P-CL", "name": "education"}
+  ],
+  "chat_groups": [
+    {"id": "G-TT", "platform": "generic-chat", "platform_chat_id": "grp-trungthu-001", "project_id": "P-TT", "team_id": "TEAM-EV", "channel_name": "aiv-trungthu"},
+    {"id": "G-CL", "platform": "generic-chat", "platform_chat_id": "grp-classes-001", "project_id": "P-CL", "team_id": "TEAM-ED", "channel_name": "aiv-classes"}
+  ],
+  "role_rank_map": {"coordinator": 3, "lead": 2, "member": 1},
+  "users": [
+    {"handle": "linh",  "name": "Nguyen Thuy Linh", "role_rank": 3, "manager": null,   "platform_user_id": "u1001", "status": "active"},
+    {"handle": "mai",   "name": "Pham Thi Mai",     "role_rank": 2, "manager": "linh", "platform_user_id": "u1002", "status": "active"},
+    {"handle": "duc",   "name": "Tran Minh Duc",    "role_rank": 1, "manager": "linh", "platform_user_id": "u1003", "status": "active"},
+    {"handle": "minh",  "name": "Dang Quang Minh",  "role_rank": 1, "manager": "linh", "platform_user_id": "u1004", "status": "active"},
+    {"handle": "huong", "name": "Ngo Thi Huong",    "role_rank": 1, "manager": "linh", "platform_user_id": "u1005", "status": "active"},
+    {"handle": "an",    "name": "Bui Hoai An",      "role_rank": 1, "manager": "linh", "platform_user_id": "u1006", "status": "active"},
+    {"handle": "khoa",  "name": "Le Anh Khoa",      "role_rank": 1, "manager": "linh", "platform_user_id": "u1007", "status": "active"},
+    {"handle": "thao",  "name": "Do Thu Thao",      "role_rank": 1, "manager": "mai",  "platform_user_id": "u1008", "status": "active"},
+    {"handle": "tuan",  "name": "Nguyen Anh Tuan",  "role_rank": 1, "manager": "mai",  "platform_user_id": "u1009", "status": "active"}
+  ],
+  "user_teams": [
+    {"user": "linh",  "team": "TEAM-EV", "role_in_team": "lead"},
+    {"user": "mai",   "team": "TEAM-ED", "role_in_team": "lead"},
+    {"user": "duc",   "team": "TEAM-EV", "role_in_team": "member"},
+    {"user": "minh",  "team": "TEAM-EV", "role_in_team": "member"},
+    {"user": "huong", "team": "TEAM-EV", "role_in_team": "member"},
+    {"user": "an",    "team": "TEAM-EV", "role_in_team": "member"},
+    {"user": "khoa",  "team": "TEAM-EV", "role_in_team": "member"},
+    {"user": "khoa",  "team": "TEAM-ED", "role_in_team": "member"},
+    {"user": "thao",  "team": "TEAM-ED", "role_in_team": "member"},
+    {"user": "thao",  "team": "TEAM-EV", "role_in_team": "member"},
+    {"user": "tuan",  "team": "TEAM-ED", "role_in_team": "member"}
+  ],
+  "parties": [
+    {"id": "PTY-KL", "name": "Xưởng Kim Long", "aliases": ["Kim Long", "xưởng đèn"], "kind": "vendor", "contact_note": "lantern workshop; 12k paper / 16k LED per unit"},
+    {"id": "PTY-ND", "name": "Trường Nguyen Du", "aliases": ["trường", "Nguyen Du", "thầy hiệu phó", "IT trường"], "kind": "institution", "contact_note": "venue + classroom host; community-partner rate"},
+    {"id": "PTY-WD", "name": "Phường (UBND)", "aliases": ["phường", "ủy ban"], "kind": "institution", "contact_note": "event permit authority"},
+    {"id": "PTY-SL", "name": "Sunlight Bakery", "aliases": ["Sunlight"], "kind": "vendor", "contact_note": "sponsor: 3tr + 100 mooncakes (2026)"},
+    {"id": "PTY-YEN", "name": "chị Yến", "aliases": ["chi Yen", "chị Yến"], "kind": "person", "contact_note": "former treasurer, rotated out — historical mentions only"}
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "corpus_file": "corpus.jsonl",
+    "transcript_file": "meeting-2026-09-07.txt",
+    "org_file": "org.json",
+    "period": ["2026-08-24", "2026-09-20"],
+    "message_counts": {"total": 118, "aiv-trungthu": 89, "aiv-classes": 29},
+    "authored": "2026-07-18",
+    "integrity_rule": "any change to corpus.jsonl must update this file (and README window map) in the same commit"
+  },
+  "tasks": [
+    {"id": "T-01", "slug": "giay-phep-phuong", "project": "P-TT", "title": "Xin giấy phép phường", "pic": ["linh"], "created_by": "D-02", "final_status": "done", "done_evidence": "m0095"},
+    {"id": "T-02", "slug": "dat-long-den", "project": "P-TT", "title": "Đặt lồng đèn (Kim Long)", "pic": ["minh"], "created_by": "D-03", "final_status": "doing", "final_spec": "150 đèn LED (per D-10), budget 2tr5 (per D-12), ETA giao 22/9 (m0107)"},
+    {"id": "T-03", "slug": "truyen-thong", "project": "P-TT", "title": "Truyền thông sự kiện", "pic": ["an"], "created_by": "D-04", "final_status": "doing"},
+    {"id": "T-04", "slug": "trang-tri", "project": "P-TT", "title": "Trang trí sân khấu + sân trường", "pic": ["duc"], "created_by": "D-05", "final_status": "doing", "final_spec": "layout per D-13; chờ đèn về 22/9 để ráp (DEP-1)"},
+    {"id": "T-05", "slug": "loa-micro", "project": "P-TT", "title": "Thuê loa trường + 2 micro", "pic": ["duc"], "created_by": "D-06", "final_status": "done", "done_evidence": "m0113"},
+    {"id": "T-06", "slug": "van-nghe", "project": "P-TT", "title": "Tiết mục văn nghệ thiếu nhi", "pic": ["khoa"], "created_by": "D-07", "final_status": "done", "done_evidence": "m0112"},
+    {"id": "T-07", "slug": "gian-tro-choi", "project": "P-TT", "title": "Gian trò chơi (6 trạm)", "pic": ["trang"], "created_by": "D-08", "pic_note": "born PIC-null; trang (provisional) claimed via D-09", "final_status": "doing"},
+    {"id": "T-C1", "slug": "giao-an-t9", "project": "P-CL", "title": "Soạn giáo án tháng 9", "pic": ["tuan"], "created_by": "DC-02", "final_status": "done", "done_evidence": "m0051"},
+    {"id": "T-C2", "slug": "tap-tiet-muc", "project": "P-CL", "title": "Tập 2 tiết mục Trung Thu", "pic": ["thao"], "created_by": "DC-03", "final_status": "done", "done_evidence": "m0110"},
+    {"id": "T-C3", "slug": "tong-duyet", "project": "P-CL", "title": "Tổng duyệt 14:00 thứ 7 19/9", "pic": ["mai"], "created_by": "DC-04", "final_status": "done", "done_evidence": "m0111"}
+  ],
+  "decisions": [
+    {"id": "D-01", "scope": "project:P-TT", "facet": "attr:event-plan", "title": "Đêm hội tối thứ 7 26/9, 18h-21h, sân trường Nguyen Du", "decided_by": "linh", "status": "effective", "created_from": "marker", "citations": ["m0003"]},
+    {"id": "D-02", "scope": "task:T-01", "title": "linh lo xin giấy phép phường (tạo task)", "decided_by": "linh", "status": "effective", "created_from": "llm", "citations": ["m0011"]},
+    {"id": "D-03", "scope": "task:T-02", "facet": "attr:order", "title": "Đặt 200 lồng đèn giấy Kim Long ~2tr4 (tạo task)", "decided_by": "linh", "proposed_by": "minh", "status": "superseded", "superseded_by": "D-10", "approval_via": "reply", "created_from": "llm", "citations": ["m0016", "m0018"], "note": "proposal by member + approval-by-reply 'ok chốt nhé' — both messages are the receipt"},
+    {"id": "D-04", "scope": "task:T-03", "title": "an lo truyền thông: bài đăng, poster, đếm ngược (tạo task)", "decided_by": "linh", "status": "effective", "created_from": "llm", "citations": ["m0022"]},
+    {"id": "D-05", "scope": "task:T-04", "title": "duc lo trang trí sân khấu + sân trường (tạo task)", "decided_by": "linh", "status": "effective", "created_from": "llm", "citations": ["m0030"]},
+    {"id": "D-06", "scope": "task:T-05", "title": "Thuê loa trường + 2 micro, duc lắp và test (tạo task)", "decided_by": "linh", "status": "effective", "created_from": "marker", "citations": ["m0041"]},
+    {"id": "D-07", "scope": "task:T-06", "title": "khoa phụ trách tiết mục văn nghệ (tạo task)", "decided_by": "linh", "status": "effective", "created_from": "llm", "citations": ["m0045"]},
+    {"id": "D-08", "scope": "task:T-07", "title": "Tạo task gian trò chơi, chưa có PIC", "decided_by": "linh", "status": "effective", "created_from": "llm", "citations": ["m0056"], "note": "PIC null hợp lệ (review rule)"},
+    {"id": "D-09", "scope": "task:T-07", "facet": "assignment", "op": "add:trang", "title": "trang nhận gian trò chơi", "decided_by": "linh", "proposed_by": "trang", "status": "effective", "approval_via": "reply", "created_from": "llm", "citations": ["m0073", "m0074"], "note": "claim by PROVISIONAL user + lead approval; also her membership confirm moment"},
+    {"id": "D-10", "scope": "task:T-02", "facet": "attr:order", "title": "Đổi sang 150 đèn LED thay cho 200 đèn giấy (an toàn)", "decided_by": "linh", "status": "effective", "supersedes": "D-03", "supersedes_explicit": true, "created_from": "llm", "citations": ["m0082"], "context": "an toàn trẻ em — bàn ở all-hands 09-07 (turns 05:30-06:10)"},
+    {"id": "D-11", "scope": "task:T-02", "facet": "attr:budget", "title": "duc đề xuất nâng budget đèn lên 3tr", "decided_by": null, "proposed_by": "duc", "status": "rejected", "rejected_reason": "overruled", "superseded_by": "D-12", "created_from": "llm", "citations": ["m0039"], "note": "member proposal, never approved; swept as overruled when D-12 landed"},
+    {"id": "D-12", "scope": "task:T-02", "facet": "attr:budget", "title": "Budget đèn 2tr5", "decided_by": "linh", "status": "effective", "created_from": "llm", "citations": ["m0049"], "note": "effective-write sweeps D-11 → rejected(overruled)"},
+    {"id": "D-13", "scope": "task:T-04", "facet": "attr:layout", "title": "Chốt phương án sân khấu (backdrop 6m, đèn 2 cụm, trò chơi dọc hàng rào, thoát hiểm trái)", "decided_by": "linh", "proposed_by": "duc", "status": "effective", "approval_via": "reply", "created_from": "llm", "citations": ["m0054", "m0088"], "note": "HYDRATION HERO: m0088 (TT#67, window W3) replies to m0054 (TT#40, window W2) — decision unreadable without reply-target hydration; citations must include BOTH"},
+    {"id": "DC-01", "scope": "team:TEAM-ED", "facet": "attr:class-schedule", "title": "Lịch học cố định CN 14:00, phòng B", "decided_by": "mai", "status": "effective", "created_from": "marker", "citations": ["m0009"], "note": "standing policy — must SURVIVE the DC-05 exception"},
+    {"id": "DC-02", "scope": "task:T-C1", "title": "tuan soạn giáo án tháng 9 (tạo task)", "decided_by": "mai", "status": "effective", "created_from": "llm", "citations": ["m0020"]},
+    {"id": "DC-03", "scope": "task:T-C2", "title": "thao dẫn các bé tập 2 tiết mục (tạo task)", "decided_by": "mai", "status": "effective", "created_from": "llm", "citations": ["m0035"]},
+    {"id": "DC-04", "scope": "task:T-C3", "title": "Tổng duyệt 14:00 thứ 7 19/9 tại sân trường (tạo task)", "decided_by": "mai", "relayed_by": "tuan", "status": "effective", "approval_via": "self_confirm", "created_from": "llm", "citations": ["m0076", "m0078"], "note": "RELAY: claimed maker (mai) not the author → born proposed; mai's reply next day = self-confirm"},
+    {"id": "DC-05", "scope": "team:TEAM-ED", "facet": "attr:class-schedule", "title": "Nghỉ học CN 20/9 (trường chấm thi) — một tuần duy nhất", "decided_by": "mai", "status": "effective", "effect_window": {"from": "2026-09-20", "until": "2026-09-20"}, "created_from": "llm", "citations": ["m0098"], "note": "EXCEPTION HERO: windowed decision SHADOWS DC-01 on 20/9 only; must NOT supersede it — 'KHÔNG đổi lịch chung' is explicit"}
+  ],
+  "transcript_records": [
+    {"id": "TD-1", "type": "decision", "scope": "project:P-TT", "facet": "attr:program-times", "title": "Mở cổng 18:00, chương trình 18:30-21:00, văn nghệ thiếu nhi 19:00, dọn xong trước 22:00", "decided_by": "linh", "source_turns": ["00:52", "01:31"]},
+    {"id": "TD-2", "type": "decision", "scope": "project:P-TT", "facet": "attr:budget-cap", "title": "Ngân sách trần 15 triệu; vượt phải hỏi linh; nếu cắt thì cắt quà trước", "decided_by": "linh", "source_turns": ["02:08", "02:52"], "corroborated_by": ["m0109"]},
+    {"id": "TB-1", "type": "blocker_corroboration", "task": "T-01", "title": "Giấy phép chưa phản hồi — rủi ro lớn nhất; công bố chính thức giữ teaser tới khi có phép", "owner": "linh", "source_turns": ["03:20", "03:44", "04:10"]}
+  ],
+  "task_updates": [
+    {"id": "U-01", "task": "T-C1", "kind": "status:done", "actor": "tuan", "lane": "pic-auto (llm)", "citations": ["m0051"]},
+    {"id": "U-02", "task": "T-C2", "kind": "note/progress", "actor": "thao", "lane": "pic-auto (llm)", "citations": ["m0092"]},
+    {"id": "U-03", "task": "T-C2", "kind": "status:done", "actor": "thao", "lane": "pic-auto (llm)", "citations": ["m0110"]},
+    {"id": "U-04", "task": "T-C3", "kind": "status:done", "actor": "mai", "lane": "pic-auto (llm)", "citations": ["m0111"]},
+    {"id": "U-05", "task": "T-01", "kind": "status:done", "actor": "linh", "lane": "pic-auto (llm)", "citations": ["m0095"]},
+    {"id": "U-06", "task": "T-02", "kind": "status:blocked", "actor": "minh", "lane": "marker (bare — linked via context)", "waiting_on": "PTY-KL", "since": "2026-09-12", "citations": ["m0085"]},
+    {"id": "U-07", "task": "T-02", "kind": "status:doing (unblocked)", "actor": "minh", "lane": "pic-auto (llm)", "citations": ["m0107"], "note": "resolves U-06; ETA 22/9"},
+    {"id": "U-08", "task": "T-07", "kind": "note/progress (sơ đồ 6 trạm)", "actor": "trang", "lane": "pic-auto (llm), provisional actor", "citations": ["m0104"]},
+    {"id": "U-09", "task": "T-07", "kind": "note/progress (10/12 volunteer)", "actor": "trang", "lane": "pic-auto (llm)", "citations": ["m0115"]},
+    {"id": "U-10", "task": "T-05", "kind": "status:done", "actor": "duc", "lane": "pic-auto (llm)", "citations": ["m0113"]},
+    {"id": "U-11", "task": "T-06", "kind": "status:done", "actor": "khoa", "lane": "pic-auto (llm)", "citations": ["m0112"]},
+    {"id": "U-12", "task": "T-03", "kind": "note (poster final, photo)", "actor": "an", "lane": "non-PIC claim (minh) → PIC ack (an, m0101)", "citations": ["m0100", "m0101"], "note": "media message: kind=photo, caption is the text"}
+  ],
+  "dependencies": [
+    {"id": "DEP-1", "predecessor": "T-02", "successor": "T-04", "status": "confirmed", "citations": ["m0031", "m0032"], "note": "textual weak-dependency + lead confirm — same project"},
+    {"id": "DEP-2", "predecessor": "T-C2", "successor": "T-06", "status": "confirmed", "citations": ["m0065", "m0067"], "note": "CAMPAIGN↔PROGRAM edge (allowed per G51 matrix); upstream lead (mai) confirmed in HER group"}
+  ],
+  "blockers": [
+    {"id": "B-1", "task": "T-02", "kind": "explicit (marker)", "waiting_on": "PTY-KL", "since": "2026-09-12", "resolved": true, "resolved_by": "m0107", "citations": ["m0085"]},
+    {"id": "B-2", "task": "T-01", "kind": "IMPLICIT — signal-ledger hero", "waiting_on": "PTY-WD", "since": "2026-09-01", "resolved": true, "resolved_by": "m0095", "signal_mentions": ["m0037", "m0069", "m0093"], "transcript_corroboration": "TB-1", "note": "3 passing mentions spanning TT windows W2→W3 (+ meeting) — never stated as a blocker; detection REQUIRES cross-window signal accumulation; promoted blocker must cite ALL mentions"},
+    {"id": "B-3", "task": null, "kind": "signal-only precision case", "topic": "máy chiếu phòng B", "waiting_on": "PTY-ND (IT trường)", "signal_mentions": ["m0043", "m0091"], "resolved": false, "note": "no task exists — must stay an open ledger signal (digest 'rumbling risks'), NOT a fabricated blocker record"}
+  ],
+  "signals_other": [
+    {"id": "X-1", "kind": "parked", "topic": "photo booth", "citations": ["m0058", "m0059", "m0060"], "note": "explicit 'để sau đi' → parked signal; surfaces in digest after N quiet days"},
+    {"id": "X-2", "kind": "none", "topic": "lo mưa", "citations": ["m0079", "m0080", "m0081"], "note": "self-resolved worry — extract NOTHING"},
+    {"id": "X-3", "kind": "none", "topic": "in 5000 tờ rơi", "citations": ["m0102", "m0103"], "note": "CONFIDENCE-GATE HERO: authorized author (linh) but joke — 😂 + immediate contradiction; must NOT become an effective decision"}
+  ],
+  "provisional_user": {"handle": "trang", "first_message": "m0071", "claims_task": "T-07 via m0073", "lead_confirm_moment": "m0074", "note": "absent from org.json by design — G44 arrival lane creates her"},
+  "team_wrap_notes": [
+    {"team": "TEAM-EV", "citations": ["m0061", "m0090"], "metrics_present": ["volunteer 22/30", "volunteer 26/30"]},
+    {"team": "TEAM-ED", "citations": ["m0091"], "metrics_present": ["18 bé đi đều"]}
+  ],
+  "qa_questions": [
+    {"q": "Vì sao đổi sang đèn LED thay vì lồng đèn giấy?", "expected_answer_gist": "D-10 (2026-09-11): đổi 200 đèn giấy → 150 đèn LED vì an toàn cho trẻ em (đèn giấy + nến rủi ro — bàn tại all-hands 09-07); Kim Long có mẫu LED 16k, tổng 2tr4 trong budget. Quyết định 200 đèn giấy (D-03) đã bị thay thế.", "expected_keys": ["D-10", "D-03"], "expected_citation_msg_ids": ["m0082", "m0016", "m0018"]},
+    {"q": "Chủ nhật 20/9 có lớp không? Lịch học chung có đổi không?", "expected_answer_gist": "Nghỉ CN 20/9 (trường mượn phòng chấm thi) — ngoại lệ MỘT tuần (DC-05). Lịch chung KHÔNG đổi: vẫn CN 14:00 (DC-01 còn hiệu lực). Tổng duyệt 19/9 vẫn diễn ra.", "expected_keys": ["DC-05", "DC-01"], "expected_citation_msg_ids": ["m0098", "m0009"]},
+    {"q": "Ngân sách đêm hội trần bao nhiêu, vượt thì ai duyệt?", "expected_answer_gist": "Trần 15 triệu VND, chốt tại all-hands 07/9 bởi linh; khoản vượt phải hỏi linh trước, nếu buộc cắt thì cắt phần quà trước. Quỹ ghi nhận chi tiêu vẫn trong cap (m0109).", "expected_keys": ["TD-2"], "expected_citation_msg_ids": ["m0109"], "expected_transcript_turns": ["02:08", "02:52"]}
+  ],
+  "window_map_batch25": {
+    "aiv-trungthu": {"W1": "TT#1-25 (m0001-m0034 range)", "W2": "TT#26-50 (ends m0067 range)", "W3": "TT#51-75 (ends m0100)", "tail": "TT#76-89 — flush-only (contains X-3, U-08/09, U-07, U-10, U-11, wrap-less)"},
+    "aiv-classes": {"W1": "CL#1-25 (through m0098)", "tail": "CL#26-29 — flush-only (contains U-03, U-04)"},
+    "notes": ["markers (m0003, m0009, m0041, m0085) fire instantly at ingest regardless of windows", "batch=100: BOTH channels are flush-only (TT=89, CL=29) — one extraction beat at replay end; batch=25 is the canonical demo profile", "transcript (30 turns < any threshold) relies on bulk-source flush-on-upload (G29)"]
+  }
+}
