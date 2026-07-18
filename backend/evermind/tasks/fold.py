@@ -58,6 +58,24 @@ def apply_op(session: Session, *, decision_id: int, op: dict) -> None:
     verb = op["op"]
     value = op.get("value")
 
+    if facet == "end_date":
+        # TSK-7: campaign defaulting (project.end_date - 1 day) is computed
+        # upstream by `decisions` (the only module allowed to read `org` for
+        # project.kind/end_date) and handed down as either a plain value
+        # (explicit human date -> clears the flag, design-v2 §Facet registry)
+        # or {"value": ..., "end_date_defaulted": true} (an auto-default).
+        task_id = _task_id_from_target(target)
+        task = _get_or_create_task(session, task_id)
+        if verb != "set":
+            raise ValueError(f"facet 'end_date' only supports 'set', got {verb!r}")
+        if isinstance(value, dict):
+            task.end_date = value["value"]
+            task.end_date_defaulted = bool(value.get("end_date_defaulted", False))
+        else:
+            task.end_date = value
+            task.end_date_defaulted = False
+        return
+
     if facet in TASK_FIELD_FACETS:
         task_id = _task_id_from_target(target)
         task = _get_or_create_task(session, task_id)

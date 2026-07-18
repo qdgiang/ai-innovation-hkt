@@ -100,7 +100,15 @@ class TasksService:
 
 def _apply_op_to_state(state: dict, op: dict) -> None:
     facet, verb, value = op["facet"], op["op"], op.get("value")
-    if facet in TASK_FIELD_FACETS:
+    if facet == "end_date":
+        # mirrors fold.apply_op's TSK-7 handling — see its comment
+        if isinstance(value, dict):
+            state["end_date"] = value["value"]
+            state["end_date_defaulted"] = bool(value.get("end_date_defaulted", False))
+        else:
+            state["end_date"] = value
+            state["end_date_defaulted"] = False
+    elif facet in TASK_FIELD_FACETS:
         state[facet] = value
     elif facet == "assignment":
         _apply_slot_op_to_state(state, "assignments", verb, value)

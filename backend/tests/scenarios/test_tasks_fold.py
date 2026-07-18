@@ -109,6 +109,30 @@ def test_multiop_decision_only_touches_its_own_targets(db_session: Session):
     assert db_session.get(Task, 2).description == "task two"
 
 
+def test_end_date_defaulting_flag_and_human_confirm_clears_it(db_session: Session):
+    """TSK-7: `decisions` computes the campaign default upstream (tasks can't
+    read `org`); the fold just records the value + the flag it's handed, and
+    clears the flag when a later op supplies a plain (human-confirmed) value.
+    """
+    _decision_effective(db_session, ts=T0, decision_id=1, ops=[
+        {"target": "task:1", "facet": "description", "op": "set", "value": "x"},
+        {"target": "task:1", "facet": "end_date", "op": "set",
+         "value": {"value": "2026-09-25", "end_date_defaulted": True}},
+    ])
+    TasksConsumer(db_session).poll_and_apply()
+    task = db_session.get(Task, 1)
+    assert str(task.end_date) == "2026-09-25"
+    assert task.end_date_defaulted is True
+
+    _decision_effective(db_session, ts=T0 + timedelta(minutes=1), decision_id=2, ops=[
+        {"target": "task:1", "facet": "end_date", "op": "set", "value": "2026-09-20"},
+    ])
+    TasksConsumer(db_session).poll_and_apply()
+    task = db_session.get(Task, 1)
+    assert str(task.end_date) == "2026-09-20"
+    assert task.end_date_defaulted is False
+
+
 # ---------------------------------------------------------------------------
 # TSK-2 — update lanes (G7 PIC auto-apply) + TSK-6 terminal locks
 # ---------------------------------------------------------------------------
