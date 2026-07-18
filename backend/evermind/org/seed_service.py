@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from evermind.org.models import ChatGroup, Party, Project, Team, User, UserIdentity, UserTeam
@@ -47,8 +47,56 @@ def _advance_sequences(session: Session) -> None:
         )
 
 
+def _preflight_identities(session: Session, seed: OrgSeed) -> set[str]:
+    platform_user_ids = [row.platform_user_id for row in seed.users]
+    existing = {
+        identity.platform_user_id: identity
+        for identity in session.scalars(
+            select(UserIdentity).where(
+                UserIdentity.platform == "generic-chat",
+                UserIdentity.connector_scope == "data-v2",
+                UserIdentity.platform_user_id.in_(platform_user_ids),
+            )
+        )
+    }
+    for user in seed.users:
+        identity = existing.get(user.platform_user_id)
+        if identity is not None and identity.user_id != USER_IDS[user.handle]:
+            raise ValueError(
+                f"identity is already mapped to another user: {user.platform_user_id}"
+            )
+
+    return {user.platform_user_id for user in seed.users if user.platform_user_id not in existing}
+
+
+def _add_missing_identities(
+    session: Session, seed: OrgSeed, missing_platform_user_ids: set[str]
+) -> None:
+    if not missing_platform_user_ids:
+        return
+    session.execute(
+        text(
+            "SELECT setval(pg_get_serial_sequence('user_identities', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM user_identities), 1), "
+            "EXISTS (SELECT 1 FROM user_identities))"
+        )
+    )
+    for user in seed.users:
+        if user.platform_user_id in missing_platform_user_ids:
+            session.add(
+                UserIdentity(
+                    user_id=USER_IDS[user.handle],
+                    platform="generic-chat",
+                    connector_scope="data-v2",
+                    platform_user_id=user.platform_user_id,
+                )
+            )
+
+
 def seed_org(session: Session, seed: OrgSeed) -> SeedSummary:
     validate_seed_keys(seed)
+    with session.no_autoflush:
+        missing_platform_user_ids = _preflight_identities(session, seed)
 
     for project in seed.projects:
         session.merge(
@@ -96,6 +144,7 @@ def seed_org(session: Session, seed: OrgSeed) -> SeedSummary:
             )
         )
     session.flush()
+    _add_missing_identities(session, seed, missing_platform_user_ids)
 
     for user in seed.users:
         session.merge(
@@ -109,16 +158,6 @@ def seed_org(session: Session, seed: OrgSeed) -> SeedSummary:
                 departed_at=None,
             )
         )
-        session.merge(
-            UserIdentity(
-                id=USER_IDS[user.handle],
-                user_id=USER_IDS[user.handle],
-                platform="generic-chat",
-                connector_scope="data-v2",
-                platform_user_id=user.platform_user_id,
-            )
-        )
-
     for membership in seed.user_teams:
         session.merge(
             UserTeam(
