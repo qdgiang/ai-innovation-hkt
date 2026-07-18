@@ -54,6 +54,11 @@ End-to-end scenario traces against `../design-v2.md`. Two batches:
 | [S41](S41-provisional-vanishes.md) | Run 8c: pruning a provisional with holdings — fixed | ★★★ |
 | [S42](S42-escalation-lands-where.md) | Run 8d: cross-boundary escalation routing — fixed | ★★★ |
 | [S43](S43-proposal-negotiation.md) | Run 8e: proposal under negotiation — **accepted** | ★★★ |
+| [S44](S44-approved-then-edited.md) | Run 9a: edit races an approval — fixed | ★★★★ |
+| [S45](S45-echo-of-a-decision.md) | Run 9b: restatements need a corroboration lane — fixed | ★★★★ |
+| [S46](S46-the-thumb-that-decides.md) | Run 9c: reaction acts — storage, withdrawal — fixed | ★★★★ |
+| [S47](S47-wrong-room-right-task.md) | Run 9d: cross-room targeting — fixed + **accepted** residual | ★★★★ |
+| [S48](S48-left-the-group-not-the-org.md) | Run 9e: left the group, not the org — fixed | ★★★ |
 
 ## Blockers — break a stated rule, lose data, or kill a hero demo beat
 
@@ -137,6 +142,7 @@ current revision until two consecutive runs found nothing:
 | 6 (probe) | S29–S33 | **G50** reply-target hydration + approval-by-reply (HIGH) · **G51** org-level dependency matrix (MED) · **G52** terminal-state locks + approval revalidation (MED-HIGH) · **G53** capture liveness & chat-id migration (MED-HIGH) · **G54** org timezone (LOW) · **G55** contested lamp + green-light retraction (LOW-MED) | rev 6 |
 | 7 | S34–S38 (S38 ✓clean) | **G56** idle/dateless lamp + anchored warnings (MED) · **G57** project end_date facet + defaulted-date cascade (MED-HIGH) · **G58** outbound registry + self-ingestion exclusion (MED) · **G59** cross-project transfer op (MED) | rev 8 |
 | 8 (adversarial, triaged per settled #15) | S39–S43 | FIXED: **G60** merge self-loops (LOW-MED) · **G62** holdings-aware pruning (MED) · **G63** escalation routing (MED). ACCEPTED: **G61** peer-lead churn detection · **G64** in-negotiation state | rev 9 — zero open unaccepted gaps |
+| 9 (adversarial #2 — contract-verb sweep) | S44–S48 | FIXED: **G65** approvals bind to the seen revision (MED) · **G66** corroboration lane + same-value guard (MED-HIGH — TD-2's `corroborated_by` was unproducible) · **G67** reaction acts: storage, instant apply, withdrawal (MED-HIGH) · **G69** group membership ≠ org + delivery reachability (LOW-MED). PARTIAL: **G68** cross-room targeting — foreign-candidate lane FIXED, effective-out-of-room ACCEPTED | rev 12 (atop the #17/#18 directives) — zero open unaccepted gaps |
 
 **Convergence status:** rev 4 achieved two consecutive clean runs (3–4) on coordination
 semantics. The user-requested probe run 5 then targeted **new territory** — the platform
@@ -151,8 +157,15 @@ Run 7 (first under the rev-7 constraints: platform-generic, one group ↔ one pr
 two-project world's own mechanics — program watchfulness, campaign rescheduling, the bot's own
 messages, and cross-project transfer: 4 gaps, **all MEDIUM-grade — first run with no HIGH** —
 plus one clean composite (S38). Adversarial run 8 (S39–S43, triaged per settled #15) added
-G60–G64: three fixed, two accepted with rationale. Clean-run counter remains reset. Register:
-**G1–G64 — every gap either fixed in `../design-v2.md` or recorded in its §Accepted gaps.**
+G60–G64: three fixed, two accepted with rationale. Adversarial run 9 (S44–S48) swept the
+**contract verbs themselves** — react/un-react, an edit racing an approval, membership-leave —
+plus the restatement and wrong-room seams, and found the **act-evidence layer** under-modeled:
+reactions had no storage, approvals no revision binding, restatements no output type (that one
+the `data-v2` answer key already punishes — TD-2's `corroborated_by` was unproducible). The
+decision core did not re-break; all four fixes reuse standing machinery (revisions, outbound
+registry, proposal lane, G63 routing). Clean-run counter remains reset. Register: **G1–G69 —
+every gap either fixed in `../design-v2.md` or recorded in its §Accepted gaps (G61 · G64 ·
+G68-residual).**
 
 **Direction (2026-07-18, post run 6 → rev 7):** scenario verification stays **platform-generic**
 — the core models a plain chat platform (send / reply / emoji-react / edit / media / membership
@@ -177,6 +190,28 @@ is bounded away (≤48h; G52 still guards inside the window), S28's ignored queu
 peer-conflict hold defaults to the standing decision after 48h (with notices). No new G numbers
 (directives, not scenario finds); clean-run counter stays reset; the next run should probe both
 rules.
+
+**Direction (2026-07-18, final — settled #18 supersedes #17a):** **proposals never expire.** A
+`proposed` decision stays open until a human act resolves it — approval, explicit deny/veto/
+dismiss, a same-unit effective write (overruled — an act, not a clock), or the proposer's own
+change-of-mind withdrawal (#17b stands). No TTL, no `approval_deadline`, no `rejected(expired)`,
+no renew loop. Anti-rot is visibility: the 48h approver nudge is restored, pendings list (aged)
+in every digest, approvers keep bulk dismiss-stale. The expiry ripple-claims in the previous
+note (S18 renew path, S31 bounding, S28 self-clearing, S43 renew loop, peer-hold defaulting)
+are **void**; those scenarios stand as originally traced. This also de-risks the fixtures the
+TTL had put in play: D-13's 8-day approval gap (m0054→m0088) and D-11's 18-minute sweep margin
+are non-issues again.
+
+**Direction (2026-07-18, final — settled #20):** **the bot never posts to groups.** Capture is
+read-only; all output moves to the dashboard (per-persona feed, approver inbox, team digest
+views); humans relay to chat when needed (a lead pastes a digest — the bot never speaks). Voids
+the chat-delivery mechanics in earlier traces: S36's reply-to-bot routing (no bot posts exist),
+the announcement beats in S28/S31/S42/S46/S47, G5's in-group proposal announcement (→ inbox +
+pending queue), G58's outbound registry (retired — nothing outbound to register), and G69's
+delivery re-routing (narrowed to membership truth + an out-of-the-room flag). Chat approval
+lanes survive on **source messages**: an affirmation reply or 👍 react on the proposal's own
+message; the dashboard tap is the universal act. Scenario files stay as historical records;
+the design text governs.
 
 ## Reality-check verdict (the question S6–S15 answer)
 

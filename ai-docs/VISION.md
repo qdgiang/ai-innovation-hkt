@@ -52,13 +52,14 @@ Three moves make that real:
 
 - **The Monday digest, per team** — computed from the record, every line cited, quoting the
   lead's own weekly wrap. Nobody compiles status anymore.
-- **Answers with receipts** — ask in chat or on the dashboard; answers cite source messages,
+- **Answers with receipts** — ask on the dashboard (the bot never posts to chat; it only
+  listens); answers cite source messages,
   know what superseded what, and know that "no class *this* Sunday" is an exception, not a
   schedule change.
 - **Blocker radar** — external waits grouped by who's being waited on ("3 teams are waiting on
   the same vendor"), dependency lamps across teams and projects, staleness and idle-work
-  detection — all deterministic SQL, pushed daily, escalating to the person who can actually
-  act. Blockers surface in days one and two, not in the postmortem.
+  detection — all deterministic SQL, surfaced daily on the dashboard feed, escalating to the
+  person who can actually act. Blockers surface in days one and two, not in the postmortem.
 - **Rotation, solved in both directions** — a new volunteer gets an onboarding brief (active
   work, the decisions shaping it, open blockers, who owns what) the moment they join; a
   departing one triggers an offboarding sweep of everything they hold before the knowledge
@@ -76,11 +77,11 @@ them: campaigns may depend on programs.
 ## Why it can be trusted
 
 Every record carries ≥1 citation, pinned to the message revision it was captured from —
-*receipts, not paraphrase*. The bot maintains or withdraws everything it says: retractions
-thread to the original announcement, backlogs are disclosed, a withdrawn "you're unblocked" is
+*receipts, not paraphrase*. The system maintains or withdraws everything it asserts: retraction
+entries append to the original one, backlogs are disclosed, a withdrawn "you're unblocked" is
 followed by its inverse. Every AI feature has a deterministic sibling (markers, SQL lamps, the
 replay corpus), so a live model wobble never breaks the story. And the whole design was
-hardened by **43 adversarial end-to-end scenarios** (gap register G1–G59, two consciously
+hardened by **48 adversarial end-to-end scenarios** (gap register G1–G69, three consciously
 accepted as not worth the complexity) plus a synthetic two-project corpus with a hand-verified
 answer key that doubles as the acceptance test.
 

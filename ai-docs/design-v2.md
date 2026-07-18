@@ -1,4 +1,4 @@
-# Design v2 — decision-driven tasks (rev 10)
+# Design v2 — decision-driven tasks (rev 13)
 
 > Consolidates: the human review (`UPDATE_REVIEW_FROM_HUMAN.md` + `decision-log.xlsx` /
 > `task-log.xlsx`), the settled decisions of 2026-07-18, and **all fixes from scenario
@@ -37,6 +37,9 @@ precision >> recall.
 | 15 | 2026-07-18 directive — **gap-acceptance policy**: small gaps MAY be accepted un-fixed when the fix's complexity outweighs the gap's likelihood/impact under the 48h hackathon clock. Every accepted gap is recorded in §Accepted gaps with rationale + workaround — accepted ≠ forgotten. Scenario verdicts triage: FIX (cheap or important) vs ACCEPT (niche + costly). |
 | 16 | 2026-07-18: adversarial run 8 (S39–S43) triaged under #15 — FIXED: merge drops pair-internal edges + re-runs DAG check (G60), holdings-aware provisional pruning (G62), cross-boundary escalation routing (G63). ACCEPTED: peer-lead decision-churn detection (G61), in-negotiation proposal state (G64). Zero open unaccepted gaps at rev 9. |
 | 17 | 2026-07-18 directives (proposal lifecycle): **(a) proposals expire** — 48h unapproved → `rejected(expired)`; the bot threads a notice onto the proposal's announcement ("expired, rejected — renew?"), and the proposer's 👍 flips it back to `proposed` with a fresh 48h. Replaces the open-ended 48h re-nudge. **(b) change-of-mind replaces** — a proposer's own different-value proposal on the same unit withdraws their older pending one; parallel pendings always mean *different* proposers. Rev 10. |
+| 18 | 2026-07-18 **final directive — proposals never expire** (supersedes #17a; #17b stands): a `proposed` decision stays open until a **human act** resolves it — approval (→ effective) · explicit deny/veto/dismiss (→ rejected) · an authority's same-unit effective write (→ `rejected(overruled)` — an act, not a clock) · the proposer's own change-of-mind withdrawal. No TTL, no `approval_deadline`, no `rejected(expired)`, no renew loop; `PROPOSAL_TTL_HOURS` dropped. Anti-rot is **visibility, not clocks**: 48h approver nudge restored, pendings listed (aged) in every digest, approver bulk dismiss-stale kept. Rev 11. |
+| 19 | 2026-07-18: adversarial run 9 (S44–S48) — the **contract-verb sweep** — triaged under #15. FIXED: approval acts bind to the seen revision (G65), corroboration lane + same-value guard (G66), reaction acts — storage, instant apply, withdrawal (G67), foreign-candidate linkage (the G68 fix half), group membership ≠ org + delivery reachability (G69). ACCEPTED: G68 residual (out-of-room decisions are never born effective). Zero open unaccepted gaps at rev 12. |
+| 20 | 2026-07-18 final directive — **the bot never posts to groups** (read-only capture). Supersedes the chat-delivery half of #1 and every announcement/ping/reply lane: all output — proposal queues, nudges, radar, digests, retractions, sweeps, arrival confirms — surfaces on the **dashboard** (per-persona feed + approver inbox + team digest views); humans relay to chat when they want (a lead pastes a digest; the bot never speaks). Consequences: outbound registry dropped — no outbound ⇒ self-ingestion structurally impossible (G58 retired); chat approval acts target the proposal's **source message** (reply/react) — the bot-announcement target is gone; G69 reachability narrows to membership truth + an out-of-the-room flag. Rev 13. |
 
 ## Entities
 
@@ -73,14 +76,18 @@ decisions       {id, ts, recorded_at, decided_by_user_id, decided_by_role_at_tim
                  ops: [{target, facet, op, value}],      -- see Facet registry
                  effect_window?: {from, until},          -- G42: one-off exception, shadows within window
                  status: proposed|effective|superseded|rejected,
-                 rejected_reason?: veto|overruled|expired|withdrawn|dismissed,  -- settled #17
-                 approval_deadline?,                     -- while proposed: ts + 48h; renew re-arms
+                 rejected_reason?: veto|overruled|withdrawn|dismissed,  -- settled #17/#18
                  supersedes_decision_id?, superseded_by_decision_id?,
                  approved_by_user_id?, approval_via: authority|delegation|self_confirm?,
                  created_from: marker|llm|dashboard|transcript, confidence}
 decision_tasks  {decision_id, task_id}                   -- task-scoped decisions (may be several)
-decision_citations {decision_id, message_id, rev_at_capture}  -- chat-originated ⇒ ≥1, enforced;
-                                                          -- pinned to the revision that was cited
+decision_citations {decision_id, message_id, kind, rev_at_capture, rev_at_act?}
+                                                          -- kind: evidence|approval|corroboration
+                                                          -- (G65/G66); chat-originated ⇒ ≥1
+                                                          -- evidence citation, enforced;
+                                                          -- pinned to the revision cited; approval rows
+                                                          -- also pin rev_at_act, the revision the
+                                                          -- approver actually saw (G65)
 
 task_updates    {id, ts, recorded_at, task_id, actor_user_id, kind: status|note,
                  payload, created_from: marker|llm|dashboard, confidence?, source_message_id?}
@@ -92,12 +99,16 @@ messages        {id, source, channel, team?, author, ts, text, thread_ref?, raw_
                  kind: text|photo|video|file|voice|sticker|system,
                  media_ref?, forward_origin?, current_rev}
 message_revisions {message_id, rev, text, edited_at}     -- G45: edits append, never overwrite
+reaction_acts   {id, message_id, user_id, emoji, ts, removed_at?}
+                                                          -- G67: acts, not messages; adapter-fed,
+                                                          -- TRACKED messages only (§Reactions)
+group_members   {group_id, user_id, joined_at, left_at?}  -- G69: from membership events; room ≠ org
 ```
 
 ## Chat platform contract (generic — settled #13)
 
 The core assumes a plain chat platform and nothing more: **send message · reply/thread
-(`thread_ref`) · emoji reactions · message edits · media with captions · membership events**
+(`thread_ref`) · emoji reactions (add & remove) · message edits · media with captions · membership events**
 (member joined/left; bot added/removed/permissions changed). Adapters normalize their platform
 to this contract; anything platform-specific — id-migration events, privacy modes, whether
 deletes are signaled, login widgets — is an adapter concern documented in that adapter's
@@ -124,6 +135,21 @@ runbook, never a core rule. Scenario verification targets this contract, not any
 - **Forwards** route through the **relay lane**: `forward_origin` is the claimed source. Member
   origin → tagged for self-confirm; external origin → linked to a `party`, and an authorized
   member's confirm makes it effective.
+
+## Reactions as acts (G67)
+
+Reactions are **acts, not messages**: the adapter records them (`reaction_acts`) **only on
+tracked messages** — the source messages of pending records and nudge targets (under settled
+#20 there are no bot posts; sources are the only tracked class). Reactions on anything else are
+dropped at the adapter: ack ≠ approval, resolved
+structurally — a 👍 on ordinary chatter can never decide anything. Reaction acts apply
+**instantly** to their known records (like dashboard taps — no window, no LLM). Receipts render
+from the act row (who, emoji, when, on what) — the act row is the evidence. **Removal:** within the ~10-min grace window (the marker-edit constant,
+reused) → auto-revert the effected record to `proposed` + an "approval withdrawn" retraction
+entry (per the symmetry rule); after grace → the removal files a
+**challenge** and the record wears an "approval evidence withdrawn" badge until resolved. Never
+silent. (Replay corpora carry no reactions — live lane; the demo equivalence is the dashboard
+tap.)
 
 ## Facet registry (what a decision can set, and what conflicts with what)
 
@@ -153,8 +179,8 @@ standing decision.
 Peer conflict: if a second same-unit effective write arrives and the writers' ranks are
 incomparable (§Hierarchy), the later decision is **held `proposed`** and both sides' leads (or
 the fallback set) are tagged — explicit human tiebreak, never silent last-write-wins. The hold
-is still a proposal: untouched for 48h it expires like any other (§Lifecycle) and the standing
-decision prevails — a defaulted outcome with notices, not a silent one.
+persists until a lead acts (#18); the standing decision stays effective throughout — an
+unresolved tie displaces nothing.
 
 ## Decision lifecycle
 
@@ -163,8 +189,8 @@ decision prevails — a defaulted outcome with notices, not a silent one.
   (marker/dashboard: always) ───────────────────────────────► effective ──► superseded
   (new) ──► proposed ── approve / self-confirm 👍 ──► effective     │
               │  ▲                                                  └─ reject ─► rejected
-              │  └ renew 👍 by proposer (fresh 48h)                     (see Rejection)
-              ├ 48h unapproved ─► rejected(expired) — bot asks "gia hạn?"
+              │  └ stays open: nudge approver at 48h; listed (aged)     (see Rejection)
+              │    in digest — no clock ever changes a status (#18)
               └ reject / overruled-by-effective / withdrawn(own newer) ─► rejected
 ```
 
@@ -176,28 +202,43 @@ decision prevails — a defaulted outcome with notices, not a silent one.
 - **Below τ, or relayed** (claimed maker not among cited authors — "posting for mai"): born
   `proposed`, tagged to the claimed maker; their 👍 = `self_confirm`. Anyone with rank ≥ the
   required authority may also approve. Never silently rejected.
-- **Approval acts (equivalent):** dashboard tap · 👍 reaction · **affirmation reply** ("ok
-  chốt", "duyệt") by a sufficiently-ranked user to the proposal's source message or the bot's
-  announcement (G50) — the reply is cited as approval evidence; negation replies ("thôi",
+- **Approval acts (equivalent):** dashboard tap · 👍 reaction (§Reactions — tracked messages
+  only, instant) · **affirmation reply** ("ok
+  chốt", "duyệt") by a sufficiently-ranked user to the proposal's source
+  message (G50; there are no bot posts to reply to — settled #20) — the reply is cited as
+  approval evidence; negation replies ("thôi",
   "khỏi") map to reject. Deterministic phrase list first, LLM only for ambiguity.
-- **Expiry (settled #17):** a `proposed` decision carries `approval_deadline = ts + 48h`
-  (`PROPOSAL_TTL_HOURS`; event-time, so replay derives identical folds). Past the deadline
-  unapproved → auto `rejected(expired)`, and the bot threads onto the proposal's announcement,
-  tagging the proposer: "⏰ expired unapproved, rejected — still needed? 👍 to renew". A renew 👍
-  flips it back to `proposed` with a fresh 48h (eventual approval still passes G52
-  revalidation). Uniform across hold reasons — below-τ, relay self-confirm, rank-gate and
-  peer-conflict holds all expire the same way.
+  **Approval binding (G65):** every approval act binds to the target revision current at the
+  act's `ts` — approval citations carry `rev_at_act`. If capture finds `rev_at_capture ≠
+  rev_at_act` (the target was edited between the approval and extraction), the decision is born
+  `proposed` with the diff shown to the approver (G52's card); one tap re-confirms,
+  re-citing the approval at the new revision. Any text change re-asks, even typo fixes — a
+  spurious 👍 costs one tap; resolving "did the ops really change" costs a second extraction.
+- **Open until resolved (settled #18):** a `proposed` decision has NO expiry — it stays open
+  until a human act resolves it: approval · explicit deny ("thôi", veto, dashboard dismiss) ·
+  a same-unit effective write by authority (swept `rejected(overruled)` — an act, not a clock) ·
+  the proposer's own withdrawal (#17b). The clock never changes a status. Staleness is fought
+  with visibility instead: one approver nudge at 48h, pendings listed (aged) in every digest,
+  and the approver's bulk dismiss-stale (an explicit act, `rejected(dismissed)`). Uniform across
+  hold reasons — below-τ, relay self-confirm, rank-gate and peer-conflict holds all wait the
+  same way. Late approval of an old proposal is safe by construction: G52 revalidation re-checks
+  the target's *current* state before anything takes effect.
 - **Supersession** needs the **rank gate**: `rank(actor) ≥ rank(D_old.decided_by_role_at_time)`
   (snapshot). Fails → born `proposed`, tagged to the original maker / nearest sufficient rank.
 - **Effective-write transaction:** insert new; flip the same-unit predecessor to `superseded`
   (+ back-pointer); **sweep** same-unit `proposed` decisions → `rejected` with
   `superseded_by := winner` (renders as "overruled by", authors notified).
+  **Same-value guard (G66):** a candidate whose ops equal the current same-unit effective ops
+  (op + value) converts to a **corroborating citation** on the standing decision — never a new
+  decision or proposal. Attribution and `ts` never move on a restatement; the popup renders
+  "✓ nhắc lại trong chat (ai, khi nào)" and Q&A answers may cite corroborating messages
+  alongside the deciding source.
 - **Rejection** (veto/`/forget`): allowed to the maker or anyone with rank ≥ maker; others file a
   **challenge** the maker resolves with one tap. Rejecting a decision **resurrects** each
   decision it superseded (restore `effective` iff no other effective same-unit superseder), then
-  refolds. If the rejected decision was announced, the bot posts a **threaded retraction**; the
-  next digest leads with corrections. Every rejection stores its `rejected_reason`
-  (`veto|overruled|expired|withdrawn|dismissed`).
+  refolds. If the rejected decision had surfaced anywhere, a **retraction entry** hits the
+  affected feeds; the next digest leads with corrections. Every rejection stores its `rejected_reason`
+  (`veto|overruled|withdrawn|dismissed`).
 
 **Terminal states & stale acts (G52):** `canceled` and `merged` tasks lock the lanes — the
 update lane accepts notes only (a PIC's `!progress` on a canceled task gets a bot reply naming
@@ -223,19 +264,25 @@ proposing → diff shown before confirm. Proposal cards always render current ta
   `[replied-to, <date>] author: …` — context-only, never re-extracted, but **citable**. A terse
   "ok chốt" reply extracts into a decision citing both the reply (the authority act) and its
   target (the content).
-- **Outbound registry & self-ingestion exclusion (G58):** every bot post (digest, announcement,
-  ping) is persisted as a message `{kind: system, author: bot}` with its platform message id and
-  a link to the record it renders — so replies to bot posts hydrate and route (corrections →
-  claim lanes; "duyệt" → approval-by-reply). System-kind messages are **excluded from window
-  transcripts, excluded from threshold counters, and never citable as evidence** — only the
-  records they render are. The system never extracts from its own output. (Human quotes of bot
-  text are ordinary messages, handled by the normal lanes and dedup.)
+- **No outbound lane (settled #20; retires G58):** the bot posts nothing to groups — capture is
+  read-only, so there is no outbound registry and self-ingestion is structurally impossible.
+  Acts on records ride the **source messages** (approval replies/reacts, hydration) and the
+  dashboard. Platform system messages (joins/leaves) remain excluded from window transcripts,
+  threshold counters, and evidence citability. (Human quotes of dashboard text are ordinary
+  messages, handled by the normal lanes and dedup.)
 - **Candidates:** the **project's** open tasks (group's team first) + the target scopes' existing
-  effective policies/attrs + **open signals** for those topics. This is the cross-window memory.
+  effective policies/attrs + **open signals** for those topics + a **slim foreign index** (G68):
+  id + title of other active projects' open tasks, listed last. This is the cross-window memory.
 - **Extractor output per window:** proposed decisions (with scope, ops, supersedes-suspicion as a
   *suggestion* unless explicitly stated) · proposed `task_updates` (progress/notes) · `signals[]`
-  (blocker-ish, dependency-ish, ask, parked — cheap to emit, no projection impact).
-- **Linkage returns** `task_id | NEW_TASK | TEAM_POLICY | PROJECT_POLICY | UNLINKED(triage)`.
+  (blocker-ish, dependency-ish, ask, parked — cheap to emit, no projection impact) ·
+  `corroborations[]` (content value-matching a candidate effective decision → citation append on
+  the standing decision, G66 — never a new decision).
+- **Linkage returns** `task_id | task_id@foreign-project | NEW_TASK | TEAM_POLICY |
+  PROJECT_POLICY | UNLINKED(triage)`. **Foreign-linked content (G68) is never born effective**,
+  any rank: born `proposed`, routed to the target project's authority (their inbox; listed in
+  that team's digest section, G63 carve-out rules) — effective only by the owning side's act.
+  Triage cards offer foreign tasks as one-tap re-home targets.
 - **Bare markers** (no `T-…` ref): the record is created instantly and deterministically; only
   its *attachment* runs through the linker (thread context counts as evidence). Marker grammar
   adds optional refs: `!decision T-12 …`, `!blocked T-12 …`, `!progress T-12 done`, `!depends T-12`.
@@ -256,8 +303,8 @@ proposing → diff shown before confirm. Proposal cards always render current ta
   lag"); lagging data is never silently presented as current. Bare-marker records whose
   *attachment* can't run (linker down) exist immediately and sit in triage until it recovers.
 - **Capture liveness (G53, platform-generic):** the adapter surfaces bot-membership events
-  (removed / permissions lost) → immediate coordinator alert ("capture from <group> stopped —
-  re-add the bot"); a daily membership self-check per mapped group backstops platforms whose
+  (removed / permissions lost) → immediate coordinator feed alert + dashboard health banner
+  ("capture from <group> stopped — re-add the bot"); a daily membership self-check per mapped group backstops platforms whose
   events can be missed. While any mapped group is dark, the digest carries a capture-health
   line ("⚠ no capture from aiv-comms since 07-28") — a severed feed is never presented as a
   quiet week. (Platform oddities like chat-id migration are the adapter's job to absorb.)
@@ -268,7 +315,7 @@ proposing → diff shown before confirm. Proposal cards always render current ta
 |---|---|
 | a PIC of the linked task | `task_update` auto-applies (status/note) — the review's carve-out |
 | authority over the task | applies as decision-grade status change |
-| anyone else | bot asks a PIC to confirm (👍 applies it, attributed to the confirming PIC) |
+| anyone else | a PIC gets a confirm card (inbox); their tap — or 👍 on the cited message — applies it, attributed to the confirming PIC |
 
 PIC statements **consistent** with the standing effective decisions of their own task are
 captured as `note` updates, not proposals (execution zone). Only contradiction or scope change
@@ -306,7 +353,7 @@ digest's needs-attention list.
   first use — else text), `since`, and the owner; radar ages off `since`; digest groups open
   blockers **by party** ("3 teams waiting on chi Yen").
 - Stored `blocked` (asserted) vs dependency lamp (computed) render distinctly; when the last
-  blocking predecessor completes, the unblocked ping asks the PIC to confirm resumption.
+  blocking predecessor completes, the unblocked feed entry asks the PIC to confirm resumption.
 - Edges: blocks-only, DAG (cycle check at write), created/removed by decisions, cross-team =
   visibility carve-out (minimal projection of upstream) + upstream-lead confirm (hackathon:
   auto-confirm) + escalation. **Admission matrix (G51):** same project ✓ · campaign ↔
@@ -316,54 +363,63 @@ digest's needs-attention list.
   edges with their campaign endpoint; program endpoints are never dragged.
 - **Daily radar job** (scheduler): flush-before-read, then sweep lamps (`blocked`, `at-risk` =
   slack below threshold, `overdue`, `stale` = in-doing no event N days, `late-start`,
-  `contested`, `idle`) → notifications. Cadence: PICs day 1 → +LCA/fallback day 3 → every 3 days; max
-  one ping per task per day; `urgent` immediate. Team-less/project-wide tasks ping the all-hands
-  group (fallback: the coordinator).
+  `contested`, `idle`) → dashboard feed entries (settled #20). Cadence: PICs day 1 →
+  +LCA/fallback day 3 → every 3 days; max one entry per task per day; `urgent` immediate.
+  Team-less/project-wide tasks surface in the project-wide digest section (fallback: the
+  coordinator's feed).
+  **Reachability (G69, narrowed by #20):** with dashboard-only delivery nothing is ever tagged
+  in-group, so reachability is informational: `group_members` keeps room membership true, and a
+  PIC absent from their task's home group raises a once-per-cycle flag to the team lead
+  ("re-add / reassign / offboard?") — they're out of the room where the humans talk.
 - **Contested lamp (G55):** ≥K status flips (default 3) by ≥2 distinct actors within T days
-  (default 7) → nudge the task's lead once, suggesting the compose-split ("production /
+  (default 7) → flag the task's lead once (feed), suggesting the compose-split ("production /
   sales-post?") with one-tap child-task proposals.
-- **Green-light retraction (G55):** when a task leaves `done`, dependents who received an
-  "unblocked" ping get the threaded inverse ("on hold again — reopened"). Symmetry rule:
-  anything the bot announced, it maintains or withdraws — decisions (retractions), backlogs
-  (notices), and derived pings alike.
+- **Green-light retraction (G55):** when a task leaves `done`, dependents whose feeds got an
+  "unblocked" entry get the inverse entry ("on hold again — reopened"). Symmetry rule: anything
+  the system asserted, it maintains or withdraws — decisions (retraction entries), backlogs
+  (notices), lamps and derived entries alike.
 - **Idle lamp (G56):** status `todo` and no event of any kind for N days (default 14),
   regardless of dates — catches dateless/unowned work no other lamp can see (programs have no
   countdown). Nudges the PICs, or the team lead when PIC-less (the common zombie case).
 - **Cross-boundary escalation routing (G63):** an escalation about a campaign↔program edge
-  posts **one message per endpoint group**, each rendering its own task's side plus only the
-  carve-out projection of the other side, tagging that group's PIC; the coordinator is tagged
-  in both. If an all-hands group is mapped, a combined copy goes there instead. No DM lane, no
-  extra visibility.
+  raises **one card per endpoint side** (feed + that team's digest section), each rendering its
+  own task plus only the carve-out projection of the other side, addressed to that side's PIC;
+  the coordinator sees both. No extra visibility either side (settled #20: no group posts).
 
 ## Overload
 
 Per-day concurrent load, next 14 days, from task windows across ALL the person's teams; weight
-urgent×2, due-≤7d extra. Warn-don't-block: dashboard pre-assignment check; in chat the check is
-**post-hoc** — warning reply tags assigner + assignee; no retraction in X hours = acceptance,
-noted on the decision. Structural bottleneck: task blocking ≥K downstream flagged task-centrically.
+urgent×2, due-≤7d extra. Warn-don't-block: dashboard pre-assignment check; for chat-made assignments the check is
+**post-hoc** — an overload flag lands on the decision and in the assigner's + assignee's feeds;
+no veto in X hours = acceptance, noted on the decision. Structural bottleneck: task blocking ≥K downstream flagged task-centrically.
 
-## Notifications
+## Notifications (dashboard feed — settled #20)
 
-Per **decision**, not per task: one announcement listing affected tasks. Material changes only
-(effective decisions; status/date/PIC/dependency updates — not note-only). Tag: maker, PICs,
-PICs of dependents, approver for proposals. **Proposals are always announced** ("📋 Proposed —
-awaiting @approver") so pending ≠ invisible. Non-urgent batches per group (~30 min); dedup per
-person per batch. Retractions thread to the original announcement.
+The bot never posts to groups: every notification is a **dashboard feed entry** (per persona,
+via the switcher) plus an **inbox item** when an act awaits someone. Per **decision**, not per
+task: one entry listing affected tasks. Material changes only (effective decisions;
+status/date/PIC/dependency updates — not note-only). Recipients: maker, PICs, PICs of
+dependents, approver for proposals. **Proposals always land in the approver's inbox and the
+team's pending queue** so pending ≠ invisible — in-chat visibility is deliberately zero; humans
+relay when needed (a lead may paste a digest into the group; the bot never speaks). Entries
+batch (~30 min) and dedup per person. Retractions append to the original entry and lead the
+next digest's corrections.
 
 **Proposal hygiene (G49; amended by settled #17):** a new proposal matching a pending one on
 (unit, op, value) merges into it — citations union, proposers listed, one queue entry, one
-expiry clock. Same-unit *different*-value pendings stay separate **only across different
+nudge clock. Same-unit *different*-value pendings stay separate **only across different
 proposers** (real alternatives). **Change-of-mind:** a proposer's own different-value proposal
 on a unit **withdraws** their older pending one — old → `rejected(withdrawn)` with
-`superseded_by := the newer` (popup: "replaced by the proposer's newer proposal"; the bot
-threads "↩️ replaced" onto the old announcement); the new proposal runs a fresh clock. If the
+`superseded_by := the newer` (popup: "replaced by the proposer's newer proposal"; the old
+feed entry gains "↩️ replaced"); the new proposal runs a fresh clock. If the
 older entry had merged several proposers, only this proposer is peeled off — the entry lives on
 for the rest as a genuine alternative; the last proposer leaving withdraws it. (Edits inside
 the ~10-min grace stay on the G45 amend lane; a new message routes here.) Approvers get bulk actions
 (approve all / dismiss all from `<person>` / dismiss stale; dismissals = `rejected` with reason,
-visible under show-inactive). The bot replies once to the *sender* of any act that didn't take effect —
-marker-proposal filed ("Got it — sent to @approver, no need to repost 👍"), failed approval
-attempt (insufficient rank), repeat paste (collapsed silently plus one gentle tip).
+visible under show-inactive). Acts that didn't take effect stay visible to their actor on the
+dashboard (settled #20 — no chat-side replies): marker-proposal filed (pending with @approver),
+failed approval attempt (insufficient rank, shown on the card), repeat paste (collapsed into
+the existing entry).
 No hard rate caps — enthusiasm is a feature; persistent noise is a lead-side note, not a block.
 
 ## Project lifecycle (G41)
@@ -371,15 +427,16 @@ No hard rate caps — enthusiasm is a feature; persistent noise is a lead-side n
 `active` → (`end_date` passes, or coordinator decision) → `closing` → (all open tasks resolved,
 or coordinator decision) → `closed`.
 
-- On `closing`: the radar STOPS overdue-pinging project tasks and instead posts one **close-out
-  sweep** per team — every open task proposed as `done` / `canceled (obsolete)` / `migrate to
+- On `closing`: the radar STOPS overdue-pinging project tasks and instead raises one **close-out
+  sweep** checklist per team (dashboard + digest, settled #20) — every open task proposed as `done` / `canceled (obsolete)` / `migrate to
   ongoing` (each resolution a normal decision; migrated tasks **transfer to a program project**
   of the lead's choosing — e.g. Weekend Classes — gaining `kind=ongoing` and exiting
   defaulting). Program projects and their tasks are untouched by a campaign's close (G47). A
   program project never auto-closes (`end_date` null): only an explicit coordinator decision
   closes it.
 - On `closed`: a generated **retrospective digest** (shipped / didn't ship / decisions incl.
-  next-time policies / final counters) is posted and archived; the project leaves active views.
+  next-time policies / final counters) is generated and archived (dashboard; a lead may share
+  it to chat by hand); the project leaves active views.
   Late-arriving sources (e.g. the retro transcript) still ingest — they append to the archive
   via the normal late-arrival rules.
 - **End-date defaulting (base rule, from the review):** a campaign task created without an
@@ -398,17 +455,23 @@ or coordinator decision) → `closed`.
 **Arrival (G44):** first message from an unknown `platform_user_id` in a mapped group
 auto-creates a **provisional user** (rank 1, member of that group's team, name from the
 platform profile). Provisional members get the full member experience — PIC-able, progress
-lane, proposals, tags, load — and the bot asks the team's lead once: "👋 <name> joined —
-confirm membership?" 👍 → `active` (logged org event); silence → stays provisional, flagged in
+lane, proposals, tags, load — and the team's lead gets a one-tap confirm card: "👋 <name>
+joined — confirm membership?" → `active` (logged org event); silence → stays provisional, flagged in
 the digest's team section, never silently dropped. Quiet provisional users are pruned after N days **only if
 they hold nothing** (no PIC-ships, no pending proposals); with holdings, they are kept and
 flagged to the team lead with a mini-sweep — one reassignment proposal per held task,
 dismiss-or-adopt for pending proposals (G62). Historical actor references are never deleted. Org config changes (users, memberships, new-season teams)
 are logged config operations, not decisions.
 
+**Group ≠ org (G69):** `group_members` tracks room membership from membership events. A
+member-left event NEVER changes `users.status` — org departure is only ever explicit (config op
+/ coordinator decision), and only that triggers the offboarding sweep. Leaving a room just means they no
+longer see that room's human chatter: the team lead gets the one-time flag (§Radar). Rejoins
+reuse the known `platform_user_id` — never a spurious provisional.
+
 `departing` triggers the **offboarding sweep**: proposed reassignments for their open tasks,
 re-routing of pending approvals, list of parties only they chase, accesses named in their
-blockers — the checklist posts to their teams' groups. `departed` leaves fan-outs and load; the
+blockers — the checklist surfaces on each affected team's dashboard section (and digest). `departed` leaves fan-outs and load; the
 persona switcher hides them; history (snapshots) untouched. Onboarding brief (`/onboard <team>`)
 is the mirror read: active tasks, effective decisions incl. team/project policies, open blockers
 with parties, the buddy policy applied.
@@ -417,10 +480,11 @@ with parties, the buddy policy applied.
 
 Skeleton from data: decisions (task + policy) with receipts · completed/created tasks · blockers
 (grouped by party, aged) · at-risk/overdue lamps · pending proposals (grouped by unit and
-proposer, G49) · corrections first if any retraction occurred · parked/asks past N days · needs-attention: idle tasks + unconfirmed/
-dateless end dates (G56) ·
+proposer, aged — no expiry, settled #18, G49) · corrections first if any retraction occurred · parked/asks past N days · needs-attention: idle tasks + unconfirmed/
+dateless end dates (G56) + unreachable PICs (G69) ·
 overload flags · a **project-wide section** (team-less tasks + project policies, G48) appended
-to every team digest and posted to the all-hands group when one is mapped. Plus: **quote the freshest
+to every team digest. Digests are dashboard views per team (settled #20); a lead may paste one
+into their group by hand — humans relay, the bot never posts. Plus: **quote the freshest
 team-scoped wrap note verbatim** (attributed + cited) — the leads' numbers ride along without a
 metrics engine. Optional stretch: named counters (`volunteers 26/30`) as append-only points with
 receipts; no formulas.
@@ -428,7 +492,7 @@ receipts; no formulas.
 ## Reasoning views
 
 Task popup: grounded summary (decisions + updates + citations only) · list newest→oldest with
-maker/time/status · **show-inactive toggle** (superseded AND rejected, badged with the rejection reason — expired / withdrawn / overruled / veto — incl. challenges)
+maker/time/status · **show-inactive toggle** (superseded AND rejected, badged with the rejection reason — withdrawn / overruled / veto / dismissed — incl. challenges)
 · click any entry → state reconstructed at that `ts` (event-time replay) · dual stamps shown when
 `recorded_at` differs. Team/project policy log = the same view filtered by scope.
 
@@ -443,10 +507,6 @@ maker/time/status · **show-inactive toggle** (superseded AND rejected, badged w
 - `ORG_TIMEZONE` (G54; demo: `Asia/Ho_Chi_Minh`): all week bucketing, day-count lamps, digest
   scheduling, and relative-date resolution ("CN này", "thứ 6") compute in org time; storage
   stays timezone-aware UTC.
-- `PROPOSAL_TTL_HOURS` (settled #17; default 48): unapproved proposals auto-expire to
-  `rejected(expired)`; deadlines are event-time (`ts + TTL`), so replay and live derive the
-  same folds.
-
 ## Phase impact (delta)
 
 - **Phase 0 seed:** `user_teams` + `role_rank` map + linh-as-coordinator + parties (chi Yen,
@@ -457,18 +517,20 @@ maker/time/status · **show-inactive toggle** (superseded AND rejected, badged w
   rework: add task refs to some markers (both marker forms tested), relabel golden set to
   production windows.
 - **Phase 1:** decision spine per this doc (ops/facets, lifecycle transactions, resurrection,
-  proposal expiry + change-of-mind withdrawal), windows incl. bulk-flush + context tail +
-  ledger, update lanes, eval gate above.
-- **Phase 2:** bot lanes (proposal announcements, self-confirm 👍, challenges, retractions,
-  expiry notices + renew 👍, radar pings), per-team digest routing, speaker-map upload flow.
+  change-of-mind withdrawal), windows incl. bulk-flush + context tail + ledger, update lanes,
+  corroboration lane (G66), eval gate above.
+- **Phase 2:** capture-side chat lanes (approval replies + reacts on source messages, markers),
+  dashboard feed + approver inbox (proposals, challenges, retractions, radar), reaction acts
+  (G67) + membership truth (G69), per-team digest views, speaker-map upload flow.
 - **Phase 3:** dashboard as before + policy log + party grouping + show-inactive.
 
 ## Accepted gaps (settled #15 — recorded, not forgotten)
 
 | # | Gap | Why accepted | Workaround on record |
 |---|---|---|---|
-| G61 | No decision-churn detection between equal-rank leads (S40) | Needs ≥2 peer leads sharing a unit + sustained conflict — niche in a 10-person NPO; every flip is already announced with receipts and listed in the digest | Coordinator supersession apex + digest visibility; one GROUP BY away if real usage shows churn |
-| G64 | No "in-negotiation" proposal state (S43) | A fourth lifecycle branch (+ nudge suppression + UI) to pause one reminder; nothing breaks without it — pending IS the truth of a negotiation | Haggle in-thread; approve-of-revision sweeps the sibling; under settled #17 a >48h negotiation expires — the proposer's renew 👍 keeps it alive |
+| G61 | No decision-churn detection between equal-rank leads (S40) | Needs ≥2 peer leads sharing a unit + sustained conflict — niche in a 10-person NPO; every flip is already surfaced with receipts and listed in the digest | Coordinator supersession apex + digest visibility; one GROUP BY away if real usage shows churn |
+| G64 | No "in-negotiation" proposal state (S43) | A fourth lifecycle branch (+ nudge suppression + UI) to pause one reminder; nothing breaks without it — pending IS the truth of a negotiation | Haggle in-thread; approve-of-revision sweeps the sibling; dismiss-stale silences nudges |
+| G68 (residual) | Out-of-room utterances about another project's task are never born effective, any rank (S47) | Covering it means cross-project authority evaluation inside every window, to save one tap; "which room can change my task" staying predictable is worth more | Foreign-linked content arrives as a routed proposal in the owning side's inbox/digest — one approval tap effects it (or decide in the owning room; the relay lane also works) |
 
 ## Deferred (roadmap slide)
 
