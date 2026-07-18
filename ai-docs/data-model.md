@@ -203,6 +203,11 @@ uploads   {id, filename, mime, version, uploaded_at, uploaded_by}
                   -- [EVM-011] txt/md only; re-upload = NEW version row, never overwrite
 ```
 
+> **Ownership note (gate ruling, PR #41):** `uploads` and `speaker_maps` are grouped here
+> for reading convenience but the tables live in **`connectors`** (B), not `ingestion` —
+> CAP-3 writes them (writer-owns-the-table, same call as `db.eventlog`); `ingestion` reads
+> them through `connectors`' read-only service port (work-split.md interface #1/#7).
+
 ## Write-path plumbing
 
 ```sql
