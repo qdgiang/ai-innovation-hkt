@@ -82,6 +82,26 @@ class OrgService:
             )
         )
 
+    def project_ids_of_user(self, user_id: int) -> list[int]:
+        """Projects the user belongs to via ANY team membership (G36 matrix).
+        Roles are per-team, so the same person naturally scopes differently
+        per project — the phân-quyền spec's core premise."""
+        rows = self.session.execute(
+            select(Team.project_id)
+            .join(UserTeam, UserTeam.team_id == Team.id)
+            .where(UserTeam.user_id == user_id)
+            .distinct()
+        )
+        return [project_id for (project_id,) in rows]
+
+    def can_view_project(self, user_id: int, project_id: int) -> bool:
+        """Spec 'View theo project': membership in any of the project's teams
+        grants view; the coordinator (rank 3) sees every project."""
+        user = self.get_user(user_id)
+        if user is not None and user.role_rank >= 3:
+            return True
+        return project_id in self.project_ids_of_user(user_id)
+
     def members_of_team(self, team_id: int) -> list[int]:
         return list(
             self.session.scalars(

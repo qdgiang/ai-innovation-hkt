@@ -17,7 +17,15 @@ def build_scheduler(session_factory) -> BackgroundScheduler:
     inlines business logic here. Each job commits its own transaction (the
     job boundary is the natural top-level write boundary here).
     """
-    scheduler = BackgroundScheduler(timezone=settings.org_timezone)
+    # misfire_grace_time: the default (1s) skips runs entirely when the tick
+    # lands late (seen live: ~3s drift under Docker/Windows -> every 30s
+    # extraction beat logged "missed" and never ran). coalesce folds a backlog
+    # of missed runs into one; max_instances stops overlap when a beat
+    # (an LLM call) outlives the interval.
+    scheduler = BackgroundScheduler(
+        timezone=settings.org_timezone,
+        job_defaults={"misfire_grace_time": 30, "coalesce": True, "max_instances": 1},
+    )
 
     def radar_job() -> None:
         """SIG-3 sweep -> SRF-1 feed entries, per PIC (design-v2.md: "sweep
