@@ -15,6 +15,7 @@ from evermind.api.deps import decisions_service, persona
 from evermind.api.routers import (
     connectors_router,
     decisions_router,
+    ingestion_router,
     knowledge_router,
     org_router,
     signals_router,
@@ -126,6 +127,7 @@ app.include_router(tasks_router.router)
 app.include_router(signals_router.router)
 app.include_router(surfacing_router.router)
 app.include_router(connectors_router.router)
+app.include_router(ingestion_router.router)
 app.include_router(knowledge_router.router)
 app.include_router(workspace_router.router)
 

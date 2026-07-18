@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from evermind.config import settings
 
@@ -39,6 +40,18 @@ def build_scheduler(session_factory) -> BackgroundScheduler:
             CaptureHealthService(session).check_all_groups()
             session.commit()
 
+    def extraction_job() -> None:
+        """ING-2..5 — the periodic LLM extraction beat: window + extract every
+        chat group's pending messages (EXTRACTION_INTERVAL_MIN; the same call
+        `POST /ingestion/extract` triggers manually)."""
+        from evermind.ingestion.service import IngestionService
+        with session_factory() as session:
+            IngestionService(session).run_pending_windows()
+            session.commit()
+
     scheduler.add_job(radar_job, CronTrigger(hour=6))
     scheduler.add_job(capture_self_check_job, CronTrigger(hour="*"))
+    if settings.extraction_interval_min > 0:
+        scheduler.add_job(extraction_job,
+                          IntervalTrigger(minutes=settings.extraction_interval_min))
     return scheduler

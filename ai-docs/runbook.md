@@ -245,3 +245,32 @@ lists the group. Message edits append `message_revisions` (G45) — the citation
 Restart safety: the `getUpdates` offset is held in memory; after an api restart
 Telegram re-delivers unacknowledged updates and the connector drops the
 duplicates by `raw_ref`. Nothing is double-captured.
+
+## 9 · LLM extraction (ING) — decisions/tasks from plain chat
+
+Every `EXTRACTION_INTERVAL_MIN` (default 5, `0` = off) the scheduler cuts a
+window per **live-platform group** (telegram; the seeded replay corpus is
+deliberately excluded from the automatic beat): up to `EXTRACTION_BATCH_SIZE`
+(50) unprocessed messages, but only once the newest one is
+`EXTRACTION_SETTLE_MIN` (2) minutes old — an actively-flowing conversation is
+never cut mid-thought. The window goes to the configured LLM (`AI_BASE_URL` /
+`AI_MODEL` — DeepSeek) with org context (members, open tasks, party aliases);
+extracted candidates enter through the SAME command gateway as everything
+else: confidence < `CONFIDENCE_TAU` (0.8) ⇒ born proposed, and the authority
+gate applies regardless — a member's extracted decision waits for the lead
+exactly like a marker would. `!marker` messages are the deterministic lane's
+property and are skipped.
+
+Demo "extract now" button (don't wait out the interval on stage):
+
+```sh
+curl -X POST -H "X-Persona: minhpq" "http://localhost:8000/ingestion/extract"
+# or one group only:  ...:8000/ingestion/extract?group_id=<chat_groups.id>
+```
+
+Bookkeeping: `extraction_windows` (one row per window: status, attempts,
+token spend), `ingest_cursors` (per-group high-water mark, EPOCH SECONDS of
+the last processed message ts — advances only when a window's outputs
+persist, so an `LLM unavailable` window retries the same messages next beat
+and nothing is ever skipped). Re-extraction after a lost cursor dedups via
+`materializations` — no duplicate decisions.
