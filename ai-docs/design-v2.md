@@ -1,4 +1,4 @@
-# Design v2 — decision-driven tasks (rev 7)
+# Design v2 — decision-driven tasks (rev 8)
 
 > Consolidates: the human review (`UPDATE_REVIEW_FROM_HUMAN.md` + `decision-log.xlsx` /
 > `task-log.xlsx`), the settled decisions of 2026-07-18, and **all fixes from scenario
@@ -33,6 +33,7 @@ precision >> recall.
 | 11 | 2026-07-18: probe run 5 (S24–S28) absorbed — message revisions + pinned citations (G45), media & forwards (G46), standing teams + org-level ongoing home (G47), team-less task governance (G48), proposal hygiene (G49). Clean-run counter reset; rev 5 awaits two fresh clean runs. |
 | 12 | 2026-07-18: probe run 6 (S29–S33) absorbed — reply-target hydration + approval-by-reply (G50), org-level dependency matrix (G51), terminal-state locks + approval-time revalidation (G52), capture liveness & chat-id migration (G53), org timezone (G54), contested lamp + green-light retraction (G55). Counter still reset. |
 | 13 | 2026-07-18 directives: **(a) the core models a generic chat platform** — send message, reply/thread, emoji react, edit, media, membership events; platform-specific quirks (id migrations, privacy modes, delete-signal availability) live in adapters, and scenario-testing stays platform-generic. **(b) One chat group ↔ exactly one project, permanently.** G47's standing-team/org-level machinery is recast as **program projects** (`projects.end_date` nullable): campaigns are dated, programs are not; each has its own groups. |
+| 14 | 2026-07-18: run 7 (S34–S38; S38 clean) absorbed — idle/dateless lamp + anchored warnings (G56), project `end_date` as a decidable facet with defaulted-date cascade (G57), outbound-message registry + self-ingestion exclusion (G58), cross-project transfer op (G59). All MEDIUM-grade; counter still reset. |
 
 ## Entities
 
@@ -134,6 +135,8 @@ The supersession unit is **(scope-target, facet-key)**. At most ONE effective de
 | `note` | append | never supersedes, never conflicts |
 | team/project scope | set on `attr:<topic>` | policies: `attr:donation-method`, `attr:entry-fee`, `attr:budget-cap`, `attr:class-schedule`… same one-effective rule per (scope, topic) |
 | `merge` | task-scoped, on the survivor | absorbed task → `status: merged, merged_into: survivor`; updates/signals/citations/dependencies re-point (deps deduped), assignments union; the absorbed task's effective decisions enter the survivor's per-unit resolution (newest wins, rest flip superseded — normal machinery reused). Authority: lead over any owning team of either task. Split = compose (create children + refine parent), not a new op |
+| `project` (task) | set | **cross-project transfer (G59)**. Authority: two-key — source lead + destination lead (either proposes, the other's approval effects it; coordinator alone suffices). Transaction: re-validate all edges vs the G51 matrix (violations → `needs-rewire`, PICs notified); clear `task_teams` (destination re-teams, else project-level per G48); re-evaluate dating under the destination; pending proposals on the task → `pending-revalidation`, re-routed to the new home's authority. History keeps its old-project context |
+| `end_date` (project scope) | set | **campaign reschedule (G57)**. Authority: coordinator (or all-leads approval). Cascade in-transaction: unconfirmed `end_date_defaulted` tasks re-default to the new `end − 1` (staying flagged); confirmed/explicit dates untouched; violating or now-oddly-early dates surface as a one-time per-team "reschedule review" checklist (close-out machinery reused). Date-triggered `closing` re-arms/disarms on change; explicit coordinator closing sticks |
 
 **Exceptions (G42):** a decision with `effect_window` does NOT supersede and is not blocked by
 one-effective-per-unit: it **shadows** the standing same-unit decision inside its window and
@@ -204,6 +207,13 @@ proposing → diff shown before confirm. Proposal cards always render current ta
   `[replied-to, <date>] author: …` — context-only, never re-extracted, but **citable**. A terse
   "ok chốt" reply extracts into a decision citing both the reply (the authority act) and its
   target (the content).
+- **Outbound registry & self-ingestion exclusion (G58):** every bot post (digest, announcement,
+  ping) is persisted as a message `{kind: system, author: bot}` with its platform message id and
+  a link to the record it renders — so replies to bot posts hydrate and route (corrections →
+  claim lanes; "duyệt" → approval-by-reply). System-kind messages are **excluded from window
+  transcripts, excluded from threshold counters, and never citable as evidence** — only the
+  records they render are. The system never extracts from its own output. (Human quotes of bot
+  text are ordinary messages, handled by the normal lanes and dedup.)
 - **Candidates:** the **project's** open tasks (group's team first) + the target scopes' existing
   effective policies/attrs + **open signals** for those topics. This is the cross-window memory.
 - **Extractor output per window:** proposed decisions (with scope, ops, supersedes-suspicion as a
@@ -290,7 +300,7 @@ digest's needs-attention list.
   edges with their campaign endpoint; program endpoints are never dragged.
 - **Daily radar job** (scheduler): flush-before-read, then sweep lamps (`blocked`, `at-risk` =
   slack below threshold, `overdue`, `stale` = in-doing no event N days, `late-start`,
-  `contested`) → notifications. Cadence: PICs day 1 → +LCA/fallback day 3 → every 3 days; max
+  `contested`, `idle`) → notifications. Cadence: PICs day 1 → +LCA/fallback day 3 → every 3 days; max
   one ping per task per day; `urgent` immediate. Team-less/project-wide tasks ping the all-hands
   group (fallback: the coordinator).
 - **Contested lamp (G55):** ≥K status flips (default 3) by ≥2 distinct actors within T days
@@ -300,6 +310,9 @@ digest's needs-attention list.
   "unblocked" ping get the threaded inverse ("on hold again — reopened"). Symmetry rule:
   anything the bot announced, it maintains or withdraws — decisions (retractions), backlogs
   (notices), and derived pings alike.
+- **Idle lamp (G56):** status `todo` and no event of any kind for N days (default 14),
+  regardless of dates — catches dateless/unowned work no other lamp can see (programs have no
+  countdown). Nudges the PICs, or the team lead when PIC-less (the common zombie case).
 
 ## Overload
 
@@ -320,8 +333,9 @@ person per batch. Retractions thread to the original announcement.
 into it — citations union, proposers listed, one queue entry, one nudge clock (same-unit
 *different*-value pendings stay separate: real alternatives). Approvers get bulk actions
 (approve all / dismiss all from `<person>` / dismiss stale; dismissals = `rejected` with reason,
-visible under show-inactive). The bot replies once to a marker-proposal's *sender* ("Got it —
-sent to @approver, no need to repost 👍"); repeat pastes collapse silently plus one gentle tip.
+visible under show-inactive). The bot replies once to the *sender* of any act that didn't take effect —
+marker-proposal filed ("Got it — sent to @approver, no need to repost 👍"), failed approval
+attempt (insufficient rank), repeat paste (collapsed silently plus one gentle tip).
 No hard rate caps — enthusiasm is a feature; persistent noise is a lead-side note, not a block.
 
 ## Project lifecycle (G41)
@@ -340,8 +354,16 @@ or coordinator decision) → `closed`.
   next-time policies / final counters) is posted and archived; the project leaves active views.
   Late-arriving sources (e.g. the retro transcript) still ingest — they append to the archive
   via the normal late-arrival rules.
-- End-date defaulting amendment: in `closing|closed`, new tasks default to **no end date +
-  warning** (never a past date).
+- **End-date defaulting (base rule, from the review):** a campaign task created without an
+  `end_date` auto-sets `project.end_date − 1 day` + `end_date_defaulted=true`; the flag clears
+  only by a human-confirming decision. `task.end_date > project.end_date` → warning. Program
+  tasks and `kind=ongoing` are exempt. Warnings never block writes.
+- **Where the warnings live (G56):** unconfirmed defaults and dateless campaign tasks appear in
+  the digest's needs-attention line and get one radar nudge to the task's lead per the normal
+  cadence — never per-day nagging. On a project `end_date` change, the G57 cascade re-defaults
+  unconfirmed dates and posts the reschedule-review checklist.
+- Defaulting amendment: in `closing|closed`, new tasks default to **no end date + warning**
+  (never a past date).
 
 ## Users lifecycle
 
@@ -365,7 +387,8 @@ with parties, the buddy policy applied.
 
 Skeleton from data: decisions (task + policy) with receipts · completed/created tasks · blockers
 (grouped by party, aged) · at-risk/overdue lamps · pending proposals (grouped by unit and
-proposer, G49) · corrections first if any retraction occurred · parked/asks past N days ·
+proposer, G49) · corrections first if any retraction occurred · parked/asks past N days · needs-attention: idle tasks + unconfirmed/
+dateless end dates (G56) ·
 overload flags · a **project-wide section** (team-less tasks + project policies, G48) appended
 to every team digest and posted to the all-hands group when one is mapped. Plus: **quote the freshest
 team-scoped wrap note verbatim** (attributed + cited) — the leads' numbers ride along without a

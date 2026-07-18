@@ -44,6 +44,11 @@ End-to-end scenario traces against `../design-v2.md`. Two batches:
 | [S31](S31-approved-too-late.md) | Run 6c: stale approvals, terminal-state locks | ★★★★ |
 | [S32](S32-group-upgrade-silent-bot.md) | Run 6d: chat-id migration, kicked bot, timezone | ★★★ |
 | [S33](S33-status-ping-pong.md) | Run 6e: contested status between PICs | ★★★ |
+| [S34](S34-zombie-todo-program.md) | Run 7a: dateless/idle work in programs | ★★★ |
+| [S35](S35-fair-moves-a-week.md) | Run 7b: rescheduling the campaign end date | ★★★★ |
+| [S36](S36-talking-back-to-the-bot.md) | Run 7c: replies to bot posts, self-ingestion | ★★★★ |
+| [S37](S37-booth-changes-hands.md) | Run 7d: cross-project task transfer | ★★★★ |
+| [S38](S38-khoa-split-week.md) | Run 7e: two-project composite — **clean** | ★★★★ |
 
 ## Blockers — break a stated rule, lose data, or kill a hero demo beat
 
@@ -125,6 +130,7 @@ current revision until two consecutive runs found nothing:
 | 4 | S22 ✓clean, S23 ✓clean | — | — |
 | 5 (probe) | S24–S28 | **G45** message revisions + pinned citations (HIGH) · **G46** media & forwards (MED-HIGH) · **G47** standing teams + org-level ongoing home (HIGH) · **G48** team-less task governance (MED) · **G49** proposal hygiene (LOW-MED) | rev 5 |
 | 6 (probe) | S29–S33 | **G50** reply-target hydration + approval-by-reply (HIGH) · **G51** org-level dependency matrix (MED) · **G52** terminal-state locks + approval revalidation (MED-HIGH) · **G53** capture liveness & chat-id migration (MED-HIGH) · **G54** org timezone (LOW) · **G55** contested lamp + green-light retraction (LOW-MED) | rev 6 |
+| 7 | S34–S38 (S38 ✓clean) | **G56** idle/dateless lamp + anchored warnings (MED) · **G57** project end_date facet + defaulted-date cascade (MED-HIGH) · **G58** outbound registry + self-ingestion exclusion (MED) · **G59** cross-project transfer op (MED) | rev 8 |
 
 **Convergence status:** rev 4 achieved two consecutive clean runs (3–4) on coordination
 semantics. The user-requested probe run 5 then targeted **new territory** — the platform
@@ -135,7 +141,11 @@ the G47 bucket vs the rev-2 dependency validator, deferred approvals vs a moving
 platform ops and multi-PIC contention — 6 more gaps, absorbed in **rev 6**. In both probe runs,
 previously-verified areas did not re-break; finds keep coming from genuinely new territory,
 and their average severity is declining (run 1 of the S1–S15 era: 6 blockers; run 6: none).
-Clean-run counter remains reset. Register: **G1–G55, all addressed in `../design-v2.md`.**
+Run 7 (first under the rev-7 constraints: platform-generic, one group ↔ one project) probed the
+two-project world's own mechanics — program watchfulness, campaign rescheduling, the bot's own
+messages, and cross-project transfer: 4 gaps, **all MEDIUM-grade — first run with no HIGH** —
+plus one clean composite (S38). Clean-run counter remains reset. Register: **G1–G59, all
+addressed in `../design-v2.md`.**
 
 **Direction (2026-07-18, post run 6 → rev 7):** scenario verification stays **platform-generic**
 — the core models a plain chat platform (send / reply / emoji-react / edit / media / membership
