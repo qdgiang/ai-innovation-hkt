@@ -2,20 +2,20 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from evermind.api.deps import get_session, persona
+from evermind.api.deps import get_session, persona_user_id
 from evermind.surfacing.service import SurfacingService
 
 router = APIRouter(tags=["surfacing"])
 
 
 @router.get("/feed")
-def get_feed(session: Session = Depends(get_session), who: str = Depends(persona)):
-    return SurfacingService(session).feed_for(int(who))
+def get_feed(session: Session = Depends(get_session), who_id: int = Depends(persona_user_id)):
+    return SurfacingService(session).feed_for(who_id)
 
 
 @router.get("/inbox")
-def get_inbox(session: Session = Depends(get_session), who: str = Depends(persona)):
-    return SurfacingService(session).inbox_for(int(who))
+def get_inbox(session: Session = Depends(get_session), who_id: int = Depends(persona_user_id)):
+    return SurfacingService(session).inbox_for(who_id)
 
 
 @router.get("/digest/{team}")

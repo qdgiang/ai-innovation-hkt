@@ -70,3 +70,39 @@ class ReplayConnector:
         )
         self.session.add(message)
         self.session.flush()
+
+
+def main() -> None:
+    """CLI: `python -m evermind.connectors.replay [<corpus.jsonl> [<org.json>]]`
+    (the Makefile `replay` target). The `org` import lives HERE, not in the
+    module body — the module docstring's rule stands (`connectors` never
+    imports `org`); the CLI is the external caller that resolves
+    channel -> `chat_groups.id` and passes the mapping in. Pace comes from
+    REPLAY_PACE_MS (0 = instant, the L4/demo-smoke shape).
+    """
+    import sys
+
+    from evermind.config import settings
+    from evermind.db.session import SessionLocal
+    from evermind.org.seed import load_org_seed
+
+    corpus = Path(sys.argv[1] if len(sys.argv) > 1 else "../data-v2/corpus.jsonl")
+    org_json = Path(sys.argv[2] if len(sys.argv) > 2 else "../data-v2/org.json")
+
+    with SessionLocal() as session:
+        ids = load_org_seed(session, org_json)  # idempotent; also yields slug->id maps
+        org_data = json.loads(org_json.read_text(encoding="utf-8"))
+        channel_map = {
+            group["channel_name"]: ids["groups"][group["id"]]
+            for group in org_data.get("chat_groups", [])
+            if group.get("channel_name")
+        }
+        count = ReplayConnector(session).replay(
+            corpus, channel_group_ids=channel_map, pace_ms=settings.replay_pace_ms,
+        )
+        session.commit()
+    print(f"replayed {count} new messages from {corpus} (channels: {sorted(channel_map)})")
+
+
+if __name__ == "__main__":
+    main()

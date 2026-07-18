@@ -51,6 +51,10 @@ def _get_or_create_task(session: Session, task_id: int, project_id: int | None =
             id=task_id, project_id=project_id or 0, kind="project", description="",
         )
         session.add(task)
+        # flush NOW: prod sessions run autoflush=False (db/session.py), so the
+        # next op's `session.get` would miss this pending row and re-create it
+        # (duplicate-PK crash on any multi-op NEW_TASK decision).
+        session.flush()
     return task
 
 

@@ -8,8 +8,10 @@ P1: tested against a synthetic `domain_events` stream until A's gateway lands
 
 Event payload shapes assumed (pending A's real contract-first PR):
   decision_effective:    {"decision_id": int, "ops": [{"target","facet","op","value"}, ...]}
-  task_update_recorded:  {"task_id": int, "actor_user_id": int, "kind": "status"|"note",
-                          "payload": {...}, "created_from": str, "confidence": float|None,
+  task_update_recorded:  {"task_id": int, "actor_user_id": int,
+                          "update_kind": "status"|"note", "payload": {...},
+                          "lane": "pic_auto"|"authority", "ts": iso,
+                          "created_from": str, "confidence": float|None,
                           "source_message_id": int|None}
 """
 from __future__ import annotations
@@ -58,6 +60,17 @@ class TasksConsumer:
     def _on_decision_effective(self, event: DomainEvent) -> None:
         decision_id = event.payload["decision_id"]
         ops = event.payload["ops"]
+        new_task_id = event.payload.get("new_task_id")
+        if new_task_id is not None:
+            # NEW_TASK: materialize the row from the payload's project context
+            # (gateway sends new_task_id + project_id) BEFORE folding ops, so
+            # the task is born under its real project — not the 0 placeholder.
+            # project_kind still defaults (payload lacks it — pending the
+            # contract addition flagged in the PR #42 review).
+            fold._get_or_create_task(
+                self.session, new_task_id,
+                project_id=event.payload.get("project_id"),
+            )
         touched_task_ids = fold.apply_decision_ops(self.session, decision_id=decision_id, ops=ops)
         for task_id in set(touched_task_ids):
             self.session.add(TaskDecisionLog(
@@ -82,9 +95,12 @@ class TasksConsumer:
 
     def _on_task_update_recorded(self, event: DomainEvent) -> None:
         payload = event.payload
+        # `update_kind` is the wire name (contracts.commands.RecordTaskUpdate /
+        # the gateway's payload — it avoids clashing with the event's own
+        # `kind`); the task_updates COLUMN stays `kind` (data-model.md).
         update = TaskUpdate(
             ts=event.ts, recorded_at=event.ts, task_id=payload["task_id"],
-            actor_user_id=payload["actor_user_id"], kind=payload["kind"],
+            actor_user_id=payload["actor_user_id"], kind=payload["update_kind"],
             payload=payload["payload"], created_from=payload["created_from"],
             confidence=payload.get("confidence"), source_message_id=payload.get("source_message_id"),
         )
@@ -93,7 +109,7 @@ class TasksConsumer:
         # G7: PIC auto-apply — only status-kind updates move `tasks.status`;
         # notes never do. Terminal locks (TSK-6) already kept this update from
         # being emitted for a canceled/merged task (decisions.service's job).
-        if payload["kind"] == "status":
+        if payload["update_kind"] == "status":
             task = self.session.get(Task, payload["task_id"])
             if task is not None:
                 task.status = TaskStatus(payload["payload"]["status"])

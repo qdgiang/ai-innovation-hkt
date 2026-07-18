@@ -145,7 +145,7 @@ def test_task_update_recorded_applies_pic_status_and_is_pic_reads_back(db_sessio
     ])
     _emit(db_session, ts=T0 + timedelta(hours=1), kind="task_update_recorded",
           aggregate="task_update", aggregate_id=1, payload={
-              "task_id": 1, "actor_user_id": 101, "kind": "status",
+              "task_id": 1, "actor_user_id": 101, "update_kind": "status",
               "payload": {"status": "done"}, "created_from": "marker",
               "confidence": None, "source_message_id": 42,
           })

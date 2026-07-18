@@ -25,6 +25,20 @@ def persona(
     return x_persona
 
 
+def persona_user_id(
+    x_persona: str = Header(...),
+    session: Session = Depends(get_session),
+) -> int:
+    """The validated persona's numeric user id — the wire persona is a HANDLE
+    ("linh"), but projections key rows on user ids; routers that filter or
+    stamp by id depend on THIS, never `int(persona)`."""
+    org = OrgService(session)
+    user = org.get_user_by_handle(x_persona)
+    if user is None or user.status.value == "departed":
+        raise HTTPException(status_code=400, detail=f"unknown persona {x_persona!r}")
+    return user.id
+
+
 def decisions_service(session: Session = Depends(get_session)) -> DecisionsService:
     """The universal gateway, wired with the org port and (interface #9) the
     tasks read port. B: implement `get_task_view(task_id) -> TaskView` on

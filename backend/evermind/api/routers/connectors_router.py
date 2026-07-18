@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from evermind.api.deps import get_session, persona
+from evermind.api.deps import get_session, persona_user_id
 from evermind.connectors.health import CaptureHealthService
 from evermind.connectors.transcript import TranscriptConnector, UnsupportedTranscriptType
 
@@ -16,7 +16,8 @@ def capture_health(session: Session = Depends(get_session)):
 
 @router.post("/uploads/transcript")
 async def upload_transcript(
-    file: UploadFile, session: Session = Depends(get_session), who: str = Depends(persona)
+    file: UploadFile, session: Session = Depends(get_session),
+    who_id: int = Depends(persona_user_id),
 ):
     try:
         content = (await file.read()).decode("utf-8")
@@ -26,7 +27,7 @@ async def upload_transcript(
         ) from exc
     try:
         upload_id = TranscriptConnector(session).upload(
-            filename=file.filename or "upload.txt", content=content, uploaded_by=int(who)
+            filename=file.filename or "upload.txt", content=content, uploaded_by=who_id
         )
     except UnsupportedTranscriptType as exc:
         raise HTTPException(status_code=415, detail=str(exc)) from exc
