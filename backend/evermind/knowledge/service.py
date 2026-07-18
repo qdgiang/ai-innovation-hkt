@@ -10,6 +10,7 @@ unavailable — the citations are the product, not the prose.
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -41,12 +42,21 @@ class QAAnswer(BaseModel):
     cited_message_ids: list[int] = []
 
 
+def _fold(text: str) -> str:
+    """Diacritic-insensitive lowercase ("đèn LED" and "den led" must meet):
+    NFD-strip combining marks; đ doesn't decompose, map it explicitly."""
+    text = text.lower().replace("đ", "d")
+    return "".join(c for c in unicodedata.normalize("NFD", text)
+                   if not unicodedata.combining(c))
+
+
 def _tokens(text: str) -> set[str]:
-    return {w.lower() for w in _WORD.findall(text) if len(w) >= 3}
+    # min length 2, not 3 — Vietnamese is full of meaningful 2-char syllables
+    return {_fold(w) for w in _WORD.findall(text) if len(w) >= 2}
 
 
 def _score(tokens: set[str], *fields: str | None) -> int:
-    haystack = " ".join(f for f in fields if f).lower()
+    haystack = _fold(" ".join(f for f in fields if f))
     return sum(1 for t in tokens if t in haystack)
 
 
@@ -91,6 +101,18 @@ class KnowledgeService:
             key=lambda pair: pair[1], reverse=True,
         )
         top_tasks = [t for t, s in scored_t if s > 0][:6]
+
+        if not top_decisions and not top_tasks:
+            # keyword recall missed (different wording than the records) —
+            # give the LLM the current operating picture instead of nothing;
+            # the system prompt already forbids answering beyond the context,
+            # so the honest outcome is either a grounded answer or "not found"
+            top_decisions = sorted(
+                (d for d in decisions if d.status in
+                 (DecisionStatus.EFFECTIVE, DecisionStatus.PROPOSED)),
+                key=lambda d: d.ts, reverse=True,
+            )[:8]
+            top_tasks = sorted(tasks, key=lambda t: t.id, reverse=True)[:6]
 
         cited_ids: dict[int, list[int]] = {}
         if top_decisions:
