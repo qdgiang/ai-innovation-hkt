@@ -128,3 +128,23 @@ Stop without losing data: `docker compose -f infra/docker-compose.yml down`.
 
 `docker compose -f infra/docker-compose.yml --profile prod up -d` adds Caddy on
 80/443 (`infra/Caddyfile`). Not yet exercised — part of P7's deploy runbook work.
+
+## 7 · Frontend on Vercel (placeholder mode)
+
+The designed deployment is the VPS/compose one above; Vercel hosts the
+**frontend only** (the FastAPI monolith + scheduler + Postgres is not
+serverless-shaped). Import via the Vercel UI:
+
+1. **Add New → Project** → import `qdgiang/EverMind`.
+2. **Root Directory: `frontend`** — the one setting that matters; framework
+   auto-detects as Next.js, `frontend/vercel.json` pins the `sin1` region.
+3. **Environment variables: none** for placeholder mode — SSR fetches fail
+   fast and every page renders its designed empty state. (Contract:
+   `frontend/.env.example`.)
+4. Deploy. Every push to `main` redeploys production; PRs get preview URLs.
+
+To make it live later: host the API publicly (VPS profile above), then set
+`NEXT_PUBLIC_API_URL` **and** `API_URL_INTERNAL` to its URL in the Vercel
+project settings and redeploy. Browser-side writes (upload, command client)
+additionally need CORS middleware on the API — tracked follow-up; SSR reads
+work without it.
