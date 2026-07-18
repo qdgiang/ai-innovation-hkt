@@ -53,6 +53,14 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+@pytest.fixture(autouse=True)
+def _no_llm(monkeypatch):
+    """Zero LLM (this file's header contract): even when the container carries a
+    real AI_API_KEY, tests must stay hermetic — force LLMUnavailable so
+    KnowledgeService returns its deterministic structured fallback."""
+    monkeypatch.setattr(settings, "ai_api_key", "", raising=False)
+
+
 @pytest.fixture(scope="session")
 def engine():
     engine = create_engine(TEST_DATABASE_URL)

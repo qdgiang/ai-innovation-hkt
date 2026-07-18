@@ -1,25 +1,19 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/shell/Sidebar";
-import { Topbar } from "@/components/shell/Topbar";
+import "./workspace.css";
 
 export const metadata: Metadata = {
-  title: "EverMind",
-  description: "Organizational memory dashboard",
+  title: "EverMind — Organizational memory",
+  description: "Project knowledge base: tasks, decisions, evidence receipts",
 };
 
+// The workspace page renders its own app-shell (sidebar/topbar) in the
+// frontend_ref design; legacy routes (/feed, /digest, /upload, …) are kept
+// routable but are no longer part of the navigation.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body>
-        <div className="flex h-screen">
-          <Sidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <Topbar />
-            <main className="flex-1 overflow-y-auto p-6">{children}</main>
-          </div>
-        </div>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

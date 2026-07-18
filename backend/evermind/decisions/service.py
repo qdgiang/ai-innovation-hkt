@@ -360,6 +360,10 @@ class DecisionsService:
             return {"status": "triage", "reason": "impossible_chronology"}
 
         plan = derive_unit_plan(cmd.ops)
+        # G3: authority must see the PRE-rewrite targets — a NEW_TASK op
+        # authorizes via the context group's team, never via the freshly
+        # allocated task id (which is not in the projection yet → apex-only).
+        auth_targets = sorted({op.target for op in cmd.ops} or {cmd.scope_target})
         new_task_id: int | None = None
         if plan.has_new_task:
             new_task_id = self._allocate_task_id()
@@ -406,7 +410,7 @@ class DecisionsService:
 
         # ── born-effective gate (DEC-1) ──────────────────────────────────
         auth_actor = cmd.delegated_by_user_id or cmd.decided_by_user_id
-        auth = self._authorize_ops(auth_actor, cmd)
+        auth = self._authorize_ops(auth_actor, cmd, auth_targets)
         conf_ok = (cmd.created_from in (CreatedFrom.MARKER, CreatedFrom.DASHBOARD)
                    or (cmd.confidence is not None and cmd.confidence >= self.tau))
 
@@ -514,6 +518,9 @@ class DecisionsService:
         decision = self._insert_decision(
             cmd, ts=ts, recorded_at=recorded_at, status=DecisionStatus.PROPOSED,
             plan=plan, rank_snapshot=rank_snapshot)
+        # stamp the task-creation context so approval can re-emit it
+        decision.new_task_id = new_task_id
+        decision.context_project_id = self._context_project(cmd)
 
         # settled #17b: the proposer's own different-value pending on a shared
         # unit is withdrawn, linked to the newer proposal
@@ -540,12 +547,15 @@ class DecisionsService:
                 return group.project_id
         return None
 
-    def _authorize_ops(self, actor_id: int, cmd: ProposeDecision):
+    def _authorize_ops(self, actor_id: int, cmd: ProposeDecision,
+                       targets: list[str] | None = None):
         """DEC-9/[EVM-003]: all-or-nothing — allowed iff the actor clears the
-        HIGHEST authority any op requires (i.e. every target)."""
+        HIGHEST authority any op requires (i.e. every target). `targets` are
+        the pre-rewrite op targets (may contain NEW_TASK)."""
         results = []
-        targets = {op.target for op in cmd.ops} or {cmd.scope_target}
-        for target in sorted(targets):
+        if targets is None:
+            targets = sorted({op.target for op in cmd.ops} or {cmd.scope_target})
+        for target in targets:
             results.append(self.authority.can_decide_target(
                 actor_id, cmd.scope, target, cmd.context_group_id))
         allowed = all(r.allowed for r in results)
@@ -732,20 +742,27 @@ class DecisionsService:
                              rev_at_act=cmd.rev_at_act),
                 CitationKind.APPROVAL)
 
+        # NEW_TASK proposals: replay the creation context stamped at propose
+        # time, so the consumer materializes the task under its real project
+        task_ctx = ({"new_task_id": decision.new_task_id,
+                     "project_id": decision.context_project_id}
+                    if decision.new_task_id is not None else {})
+
         if decision.effect_window_from is not None:
             self._emit("decision_effective", "decision", decision.id,
                        self._decision_payload(decision, windowed=True,
-                                              approved_by=approver, via=via.value),
+                                              approved_by=approver, via=via.value,
+                                              **task_ctx),
                        decision.ts, cmd)
             return {"status": "effective", "decision_id": decision.id, "windowed": True}
 
         write = self._effective_write(decision, plan, cmd)
         self._emit("decision_effective", "decision", decision.id,
                    self._decision_payload(decision, approved_by=approver,
-                                          via=via.value, **write),
+                                          via=via.value, **task_ctx, **write),
                    decision.ts, cmd)
         return {"status": "effective", "decision_id": decision.id, "via": via.value,
-                **write}
+                **task_ctx, **write}
 
     def _authorize_decision_targets(self, actor_id: int, decision: Decision):
         targets = {op["target"] for op in decision.ops} or {decision.scope_target}

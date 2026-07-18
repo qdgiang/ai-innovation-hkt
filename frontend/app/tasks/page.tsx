@@ -1,28 +1,34 @@
-// DSH-3, owner: B. Task board (read-only). Click a card -> /tasks/[id] for the
-// reasoning popup (log, time-travel).
+// DSH-3, owner: B. Task board. Click a card title -> /tasks/[id] for the
+// reasoning popup (log, time-travel); the per-card status select is the
+// TSK-2 write lane (RecordTaskUpdate via the command gateway).
 import Link from "next/link";
-import { ApiError } from "@/components/dashboard/ApiError";
+import { TaskStatusSelect } from "@/components/tasks/TaskStatusSelect";
 import { api } from "@/lib/api-client";
-import { DEFAULT_PERSONA_HANDLE, PERSONA_COOKIE } from "@/lib/persona";
-import type { Task, TaskStatus } from "@/lib/types";
-import { cookies } from "next/headers";
+import { currentPersona } from "@/lib/persona";
+import type { Persona, Task, TaskStatus } from "@/lib/types";
 
 const COLUMNS: TaskStatus[] = ["todo", "doing", "blocked", "done"];
 
 export default async function TasksPage() {
+  const persona = await currentPersona();
+
   let tasks: Task[] = [];
-  let error: string | null = null;
-  const persona = (await cookies()).get(PERSONA_COOKIE)?.value ?? DEFAULT_PERSONA_HANDLE;
+  let personas: Persona[] = [];
   try {
-    tasks = await api.get<Task[]>("/tasks", persona);
-  } catch (caught) {
-    error = (caught as Error).message;
+    [tasks, personas] = await Promise.all([
+      api.get<Task[]>("/tasks", persona),
+      api.get<Persona[]>("/personas"),
+    ]);
+  } catch {
+    // backend not reachable — render an empty board rather than crash the page
   }
+  const personaUserIds = Object.fromEntries(
+    personas.filter((p) => p.handle).map((p) => [p.handle!, p.id]),
+  );
 
   return (
     <div>
       <h1 className="mb-4 text-lg font-semibold">Task board</h1>
-      {error && <div className="mb-4"><ApiError message={error} /></div>}
       <div className="grid grid-cols-4 gap-4">
         {COLUMNS.map((status) => (
           <div key={status} className="rounded-lg bg-surface-sunken p-3 dark:bg-surface-dark-sunken">
@@ -33,16 +39,31 @@ export default async function TasksPage() {
               {tasks
                 .filter((t) => t.status === status)
                 .map((t) => (
-                  <Link
+                  <div
                     key={t.id}
-                    href={`/tasks/${t.id}`}
-                    className="block rounded-md border border-slate-200 bg-white p-2 text-sm hover:border-brand-coral dark:border-slate-800 dark:bg-surface-dark"
+                    className="rounded-md border border-slate-200 bg-white p-2 text-sm hover:border-brand-coral dark:border-slate-800 dark:bg-surface-dark"
                   >
-                    {t.description || `Task #${t.id}`}
-                    {t.end_date_defaulted && (
-                      <span className="ml-1 text-xs text-amber-600">· defaulted date</span>
-                    )}
-                  </Link>
+                    <Link href={`/tasks/${t.id}`} className="block hover:text-brand-coral">
+                      {t.description || `Task #${t.id}`}
+                      {t.end_date_defaulted && (
+                        <span className="ml-1 text-xs text-amber-600">· defaulted date</span>
+                      )}
+                    </Link>
+                    {t.status === "blocked" &&
+                      (t.blocked_waiting_on_text || t.blocked_waiting_on_party_id) && (
+                        <p className="mt-1 text-xs text-amber-600">
+                          ⏳ waiting on{" "}
+                          {t.blocked_waiting_on_text ?? `party #${t.blocked_waiting_on_party_id}`}
+                        </p>
+                      )}
+                    <div className="mt-1.5">
+                      <TaskStatusSelect
+                        taskId={t.id}
+                        status={t.status}
+                        personaUserIds={personaUserIds}
+                      />
+                    </div>
+                  </div>
                 ))}
               {tasks.filter((t) => t.status === status).length === 0 && (
                 <p className="text-xs text-slate-400">—</p>

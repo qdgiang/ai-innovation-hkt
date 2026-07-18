@@ -5,24 +5,19 @@
 // `ingestion`'s job (Lane A, not built) — this only confirms the file landed.
 import { useState } from "react";
 import { api } from "@/lib/api-client";
-import { DEFAULT_PERSONA_HANDLE, PERSONA_COOKIE } from "@/lib/persona";
+import { personaFromDocument } from "@/lib/persona-client";
 
 export default function UploadPage() {
   const [status, setStatus] = useState<string | null>(null);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const input = (e.currentTarget.elements.namedItem("file") as HTMLInputElement);
     const file = input.files?.[0];
     if (!file) return;
-    const storedPersona = document.cookie
-      .split("; ")
-      .find((item) => item.startsWith(`${PERSONA_COOKIE}=`));
-    const persona = storedPersona
-      ? decodeURIComponent(storedPersona.split("=")[1])
-      : DEFAULT_PERSONA_HANDLE;
     setStatus("Uploading…");
     try {
-      const result = await api.uploadTranscript(file, persona);
+      const result = await api.uploadTranscript(file, personaFromDocument());
       setStatus(`Uploaded — upload_id ${result.upload_id}`);
     } catch (err) {
       setStatus(`Failed: ${(err as Error).message}`);

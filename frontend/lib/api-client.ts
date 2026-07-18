@@ -41,13 +41,59 @@ async function apiGet<T>(path: string, persona?: string): Promise<T> {
   return res.json();
 }
 
-// TODO(A): replace with the real typed envelope + expected_version/diff-card
-// handling once DEC-* lands (P4/P5). This is a placeholder shape only.
+// The real [EVM-021] envelope: every dashboard tap POSTs one typed command;
+// a 409 carries the version-conflict diff card in its body.
 async function postCommand<T>(command: CommandEnvelope & Record<string, unknown>): Promise<T> {
   const res = await fetch(`${API_URL}/commands`, {
     method: "POST",
     headers: { ...BASE_HEADERS, "Content-Type": "application/json", "X-Persona": command.persona },
     body: JSON.stringify(command),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`POST /commands failed: ${res.status} ${body}`);
+  }
+  return res.json();
+}
+
+function envelope(persona: string): CommandEnvelope {
+  return { client_command_id: crypto.randomUUID(), persona, created_from: "dashboard" };
+}
+
+// DSH-7 typed taps — thin wrappers so pages never hand-roll command shapes.
+function approveProposal(persona: string, personaUserId: number, decisionId: number) {
+  return postCommand<{ status: string }>({
+    ...envelope(persona), kind: "approve_proposal",
+    decision_id: decisionId, approved_by_user_id: personaUserId,
+    ack_revalidation: true,
+  });
+}
+
+function rejectProposal(
+  persona: string, personaUserId: number, decisionId: number,
+  reason: "veto" | "dismissed" = "dismissed",
+) {
+  return postCommand<{ status: string }>({
+    ...envelope(persona), kind: "reject_proposal",
+    decision_id: decisionId, rejected_by_user_id: personaUserId, reason,
+  });
+}
+
+function recordTaskStatus(
+  persona: string, personaUserId: number, taskId: number, status: string,
+) {
+  return postCommand<{ status: string }>({
+    ...envelope(persona), kind: "record_task_update",
+    task_id: taskId, actor_user_id: personaUserId,
+    update_kind: "status", payload: { status },
+  });
+}
+
+async function askQA(question: string, persona: string) {
+  const res = await fetch(`${API_URL}/qa`, {
+    method: "POST",
+    headers: { ...BASE_HEADERS, "Content-Type": "application/json", "X-Persona": persona },
+    body: JSON.stringify({ question }),
   });
   if (!res.ok) throw await responseError(res);
   return res.json();
@@ -68,4 +114,7 @@ async function uploadTranscript(file: File, persona: string): Promise<{ upload_i
   return res.json();
 }
 
-export const api = { get: apiGet, postCommand, uploadTranscript };
+export const api = {
+  get: apiGet, postCommand, uploadTranscript,
+  approveProposal, rejectProposal, recordTaskStatus, askQA,
+};

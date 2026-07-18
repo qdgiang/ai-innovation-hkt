@@ -46,6 +46,12 @@ class Decision(Base):
     confidence: Mapped[float | None]
     window_id: Mapped[int | None]
     stable_event_id: Mapped[str | None]  # [EVM-012] ordering tiebreak
+    # Task-creation context, stamped at propose time for NEW_TASK decisions so
+    # the APPROVAL path can emit the same new_task_id/project_id the
+    # born-effective path does — without it the consumer materializes the task
+    # under the 0-placeholder project (PR #42 review gap).
+    new_task_id: Mapped[int | None]
+    context_project_id: Mapped[int | None]
 
     # Append-only enforcement (settled #2): a DB trigger rejects UPDATEs on body
     # columns (ts, decided_by_*, scope*, description, context, ops, effect_window,

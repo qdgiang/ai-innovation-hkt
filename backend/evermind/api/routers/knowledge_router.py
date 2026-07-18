@@ -15,4 +15,5 @@ class QARequest(BaseModel):
 
 @router.post("/qa")
 def ask(body: QARequest, session: Session = Depends(get_session), who: str = Depends(persona)):
+    """KNW-2: {question, persona} → cited, truth-state-labeled answer (DSH-6)."""
     return KnowledgeService(session).answer(body.question, who)

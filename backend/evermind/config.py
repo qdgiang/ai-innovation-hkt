@@ -22,5 +22,10 @@ class Settings(BaseSettings):
     grace_window_min: int = 10
     nudge_after_hours: int = 48
 
+    # P4 glue: the in-app projection-consumer loop + APScheduler (OPS-4).
+    # 0 disables the loop (tests drive consumers explicitly).
+    consumer_poll_ms: int = 2000
+    run_scheduler: bool = True
+
 
 settings = Settings()

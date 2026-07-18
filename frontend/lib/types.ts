@@ -10,10 +10,53 @@ export type SignalKind = "blocker" | "dependency" | "ask" | "parked";
 
 export interface Persona {
   id: number;
-  handle: string;
+  handle: string | null;
   name: string;
   role_rank: 1 | 2 | 3;
-  status: "provisional" | "active" | "departing";
+  status: "provisional" | "active" | "departing" | "departed";
+}
+
+// The real GET /decisions row (decisions_router._serialize).
+export interface Decision {
+  id: number;
+  ts: string;
+  recorded_at: string;
+  decided_by_user_id: number;
+  decided_by_handle: string | null;
+  scope: "task" | "team" | "project";
+  scope_target: string;
+  description: string;
+  context: string | null;
+  note: string | null;
+  ops: { target: string; facet: string; op: string; value: unknown }[];
+  status: DecisionStatus;
+  rejected_reason: string | null;
+  supersedes_decision_id: number | null;
+  superseded_by_decision_id: number | null;
+  approved_by_user_id: number | null;
+  approved_by_handle: string | null;
+  approval_via: string | null;
+  created_from: "marker" | "llm" | "dashboard" | "transcript";
+  confidence: number | null;
+  effect_window: { from: string; until: string | null } | null;
+  citations: { message_id: number; kind: "evidence" | "approval" | "corroboration" }[];
+}
+
+// POST /qa (KnowledgeService.answer).
+export interface QAResponse {
+  answer: string;
+  sources: string[];
+  llm: boolean;
+  cited_decision_ids: number[];
+  cited_task_ids: number[];
+  cited_message_ids: number[];
+}
+
+// GET /health/capture (CaptureHealthService.check_all_groups).
+export interface CaptureGroupHealth {
+  group_id: number;
+  last_message_at: string | null;
+  dark: boolean;
 }
 
 // The real GET /tasks shape (evermind.tasks.models.Task, jsonable_encoder'd).

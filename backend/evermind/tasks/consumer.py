@@ -113,6 +113,17 @@ class TasksConsumer:
             task = self.session.get(Task, payload["task_id"])
             if task is not None:
                 task.status = TaskStatus(payload["payload"]["status"])
+                if task.status == TaskStatus.BLOCKED:
+                    # SIG-2 waiting_on: party id resolution is the command
+                    # producer's job (tasks may not import org) — the payload
+                    # carries the resolved id and/or the free text (G22).
+                    task.blocked_waiting_on_party_id = payload["payload"].get("waiting_on_party_id")
+                    task.blocked_waiting_on_text = payload["payload"].get("waiting_on_text")
+                    task.blocked_since = event.ts
+                else:
+                    task.blocked_waiting_on_party_id = None
+                    task.blocked_waiting_on_text = None
+                    task.blocked_since = None
                 if task.status == TaskStatus.CANCELED:
                     dependencies.on_predecessor_status_changed(
                         self.session, predecessor_id=task.id

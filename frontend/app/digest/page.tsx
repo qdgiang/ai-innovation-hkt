@@ -1,8 +1,15 @@
-// DSH-5 (half), owner: B. Team digest (SRF-3). ?team=<id> selects the team;
-// decisions/policy log + pending-proposals sections are TODO — they need
-// `decisions` (Lane A, not built).
+// DSH-5, owner: B. Team digest (SRF-3). ?team=<id> selects the team;
+// decisions/policy + pending-proposal sections ride on GET /decisions.
+import Link from "next/link";
 import { api } from "@/lib/api-client";
-import type { Digest } from "@/lib/types";
+import { currentPersona } from "@/lib/persona";
+import type { Decision, Digest } from "@/lib/types";
+
+function daysAgo(ts: string): string {
+  const days = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 86_400_000));
+  if (days === 0) return "hôm nay";
+  return `${days} ngày trước`;
+}
 
 export default async function DigestPage({
   searchParams,
@@ -11,13 +18,23 @@ export default async function DigestPage({
 }) {
   const { team } = await searchParams;
   const teamId = team ?? "1";
+  const persona = await currentPersona();
 
   let digest: Digest | null = null;
+  let decisions: Decision[] = [];
   try {
-    digest = await api.get<Digest>(`/digest/${teamId}`);
+    [digest, decisions] = await Promise.all([
+      api.get<Digest>(`/digest/${teamId}`, persona),
+      api.get<Decision[]>("/decisions?show_inactive=false", persona),
+    ]);
   } catch {
     // backend not reachable
   }
+
+  // Demo posture: recent effective decisions (windowed exceptions flagged)
+  // rather than a strict per-team scope filter.
+  const effective = decisions.filter((d) => d.status === "effective").slice(0, 6);
+  const proposed = decisions.filter((d) => d.status === "proposed");
 
   return (
     <div>
@@ -51,6 +68,54 @@ export default async function DigestPage({
           </section>
 
           <section>
+            <h2 className="mb-2 text-sm font-medium uppercase text-slate-500">
+              Quyết định &amp; chính sách
+            </h2>
+            {effective.length === 0 && (
+              <p className="text-sm text-slate-400">Chưa có quyết định hiệu lực.</p>
+            )}
+            <ul className="space-y-1 text-sm">
+              {effective.map((d) => (
+                <li key={d.id}>
+                  <Link href="/decisions" className="hover:text-brand-coral">
+                    <span className="font-medium">D{d.id}</span> · {d.description}
+                  </Link>{" "}
+                  <span className="text-xs text-slate-400">
+                    @{d.decided_by_handle ?? d.decided_by_user_id} · {daysAgo(d.ts)}
+                  </span>
+                  {d.effect_window && (
+                    <span className="ml-1 text-xs text-violet-600 dark:text-violet-400">
+                      ngoại lệ có thời hạn{" "}
+                      {new Date(d.effect_window.from).toLocaleDateString()}
+                      {d.effect_window.until &&
+                        ` → ${new Date(d.effect_window.until).toLocaleDateString()}`}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium uppercase text-slate-500">Đang chờ duyệt</h2>
+            {proposed.length === 0 && (
+              <p className="text-sm text-slate-400">Không có đề xuất nào đang chờ.</p>
+            )}
+            <ul className="space-y-1 text-sm">
+              {proposed.map((d) => (
+                <li key={d.id}>
+                  <Link href="/decisions" className="hover:text-brand-coral">
+                    <span className="font-medium">D{d.id}</span> · {d.description}
+                  </Link>{" "}
+                  <span className="text-xs text-amber-600">
+                    chờ {daysAgo(d.ts)} · @{d.decided_by_handle ?? d.decided_by_user_id}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
             <h2 className="mb-2 text-sm font-medium uppercase text-slate-500">Needs attention</h2>
             {digest.needs_attention.length === 0 && <p className="text-sm text-slate-400">Nothing flagged.</p>}
             <ul className="space-y-1 text-sm">
@@ -68,10 +133,6 @@ export default async function DigestPage({
               </blockquote>
             </section>
           )}
-
-          <p className="text-xs text-slate-400">
-            Decision/policy log and pending-proposal sections: owner A (needs `decisions`).
-          </p>
         </div>
       )}
     </div>

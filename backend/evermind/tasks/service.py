@@ -9,11 +9,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from evermind.contracts.ports import TaskView
 from evermind.tasks.fold import TASK_FIELD_FACETS
 from evermind.tasks.models import (
     Task, TaskAssignment, TaskDecisionLog, TaskDependency, TaskTeam, TaskUpdate,
 )
-from evermind.contracts.ports import TaskView
 
 
 class TasksService:
@@ -24,22 +24,21 @@ class TasksService:
         return self.session.get(Task, task_id)
 
     def get_task_view(self, task_id: int) -> TaskView | None:
-        """Read-only authority port for the decisions gateway."""
-        task = self.session.get(Task, task_id)
+        """Interface #9 (`contracts.ports.TaskReadPort`) — the slice the decision
+        gateway may read: PIC lane routing (TSK-2) + G52 revalidation."""
+        task = self.get_task(task_id)
         if task is None:
             return None
         return TaskView(
-            id=task.id,
-            project_id=task.project_id,
-            status=task.status,
-            team_ids=list(self.session.scalars(
-                select(TaskTeam.team_id).where(TaskTeam.task_id == task_id)
-            )),
-            pic_user_ids=list(self.session.scalars(
-                select(TaskAssignment.user_id).where(TaskAssignment.task_id == task_id)
-            )),
+            id=task.id, project_id=task.project_id, status=task.status,
+            team_ids=self.teams_of(task_id), pic_user_ids=self.pics_of(task_id),
             merged_into=task.merged_into,
         )
+
+    def teams_of(self, task_id: int) -> list[int]:
+        return list(self.session.scalars(
+            select(TaskTeam.team_id).where(TaskTeam.task_id == task_id)
+        ))
 
     def dependencies_of(self, task_id: int) -> list[TaskDependency]:
         """TSK-3 — predecessor/successor edges for radar + dependency lamps."""
