@@ -117,10 +117,14 @@ def workspace(project_id: int, session: Session = Depends(get_session)):
     team_projects = dict(session.execute(select(Team.id, Team.project_id)).all())
     all_decisions = list(session.scalars(
         select(Decision).order_by(Decision.ts.desc(), Decision.id.desc())))
-    decisions = [
-        d for d in all_decisions
-        if _decision_project(d, task_projects, team_projects) in (project_id, None)
-    ]
+    decisions = []
+    for d in all_decisions:
+        proj = _decision_project(d, task_projects, team_projects)
+        # unresolvable targets belong here ONLY when they are genuinely unborn
+        # NEW_TASK proposals (stamped new_task_id) — anything else is an
+        # orphaned row (e.g. test leftovers around a table wipe), not demo data
+        if proj == project_id or (proj is None and d.new_task_id is not None):
+            decisions.append(d)
     decision_ids = [d.id for d in decisions] or [-1]
     citations = defaultdict(list)
     for row in session.scalars(

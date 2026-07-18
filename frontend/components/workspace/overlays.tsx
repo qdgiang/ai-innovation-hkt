@@ -277,7 +277,7 @@ export function AskModal({
             {result && (
               <>
                 <div className="ask-answer">{result.answer}</div>
-                {!result.llm && (
+                {!result.llm && result.sources.length > 0 && (
                   <span className="ask-fallback">
                     LLM không khả dụng — trả về dữ liệu có trích dẫn (structured fallback).
                   </span>

@@ -73,12 +73,17 @@ class TasksConsumer:
             )
         touched_task_ids = fold.apply_decision_ops(self.session, decision_id=decision_id, ops=ops)
         for task_id in set(touched_task_ids):
+            task = self.session.get(Task, task_id)
+            if task is None:
+                # orphaned event (task row absent — e.g. a test wiped tables
+                # around a live event log): skip instead of poisoning the loop
+                # with an FK violation that wedges every later event
+                continue
             self.session.add(TaskDecisionLog(
                 task_id=task_id, decision_id=decision_id, ts=event.ts,
                 recorded_at=event.ts, stable_event_id=event.caused_by_command, ops=ops,
             ))
-            task = self.session.get(Task, task_id)
-            if task is not None and task.status == TaskStatus.CANCELED:
+            if task.status == TaskStatus.CANCELED:
                 dependencies.on_predecessor_status_changed(self.session, predecessor_id=task_id)
 
     def _on_decision_rejected(self, event: DomainEvent) -> None:
