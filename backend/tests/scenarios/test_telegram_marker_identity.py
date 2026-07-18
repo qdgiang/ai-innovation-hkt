@@ -57,8 +57,9 @@ def test_numeric_platform_id_beats_a_changed_username(db_session, org_ids):
 
     outcome = IngestionService(db_session).apply_markers(message.id)
 
-    # resolved to the seeded minhpq (rank-1 member -> proposed), NOT provisional
-    assert outcome[0]["status"] == "proposed"
+    # resolved to the seeded minhpq (lead of the group's team -> effective),
+    # NOT to a provisional twin
+    assert outcome[0]["status"] == "effective"
     user = OrgService(db_session).resolve_identity("telegram", "default", "1210670436")
     assert user is not None and user.handle == "minhpq"
     assert user.status == UserStatus.ACTIVE  # no provisional twin was created
