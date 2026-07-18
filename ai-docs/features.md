@@ -21,6 +21,8 @@
 3. **Proposals never expire.** Only a human act changes a status: approve · deny/veto/dismiss ·
    same-unit effective write (overruled — an act, not a clock) · proposer's own withdrawal.
    Clocks may *create visibility* (nudges, aged listings) but never change state. (settled #18)
+   Scope: **decision statuses**. The signal ledger is deliberately different — working
+   memory that may expire or promote on staleness (SIG-1, G35).
 4. **The bot never posts to groups.** Capture is read-only; every output surfaces on the
    dashboard (per-persona feed, approver inbox, team digest views). Humans relay to chat by
    hand. Chat-side acts ride the **source messages** (approval reply / 👍 react). (settled #20)
@@ -115,7 +117,8 @@
   that costs one tap). `UNLINKED` triage waits indefinitely for a human — no clock. [EVM-022]
 - **ING-6 — Provisional arrival.** First message from an unknown `platform_user_id` in a
   mapped group → provisional user (rank 1, full member experience), lead gets a one-tap
-  confirm card (G44). Pruning after N quiet days **only if they hold nothing**; with
+  confirm card (G44). User rows are created via the `org` module's write port — ingestion
+  triggers, `org` owns. Pruning after N quiet days **only if they hold nothing**; with
   holdings → kept + mini-sweep (one reassignment proposal per held task) (G62). Rejoins
   reuse the known id — never a duplicate provisional (G69).
 - **ING-7 — Late arrival.** Fold and supersession direction use event `ts`, not arrival;
@@ -254,7 +257,8 @@
   auto-resolved by signals. [EVM-013] Signals expire when contradicted or after N quiet
   days; `parked` ("để sau") and unanswered asks surface in the digest after N days (G35).
 - **SIG-2 — Blocked + parties.** Structured wait: `waiting_on` (party FK via alias
-  fuzzy-match, confirm on first use, else text), `since`, owner (G22, G32). Radar ages off
+  fuzzy-match, confirm on first use, else text; the `parties` table itself lives in the
+  `org` module — signals consumes its port), `since`, owner (G22, G32). Radar ages off
   `since`; digest groups open blockers **by party** ("3 teams waiting on chi Yến").
   Asserted `blocked` chip vs computed dependency lamp render distinctly (G15).
 - **SIG-3 — Radar.** Daily job (flush-before-read): lamps `blocked` · `at-risk` · `overdue` ·
@@ -382,7 +386,8 @@
   program), teams, groups (`aiv-trungthu`, `aiv-classes`), users with `role_rank` +
   manager chain (linh = coordinator), `user_teams` (matrix members), parties. Config ops
   are logged, not decisions. No org-admin UI (settled #7). Platform-scoped identity keys;
-  never merge users by display name. [D5]
+  never merge users by display name. [D5] Code home: the **`org` module** (the OPS group
+  is a feature grouping — eval lives in tests, scheduler in its own module).
 - **OPS-3 — Eval.** `make eval`: replay → extraction over production-shape windows → score
   vs `data-v2/answer_key.json`. Gate: decision precision ≥ 0.9 · linkage ≥ 0.8 · citation
   completeness on planted boundary cases · corroboration TD-2 produced · distractors

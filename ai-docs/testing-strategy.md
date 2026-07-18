@@ -100,8 +100,9 @@ fails loudly.
 - Read endpoints: filter matrix from the stakeholder spec (time/PIC/team/status/type;
   decision search by id/context/description), persona scoping, `show_inactive`.
 - Time-travel endpoint returns the S15-verified reconstruction.
-- **Import-linter** contract: module dependency rules from `architecture.md` (core imports
-  nothing but contracts; nothing imports `api`; LangChain appears only under `knowledge`).
+- **Import-linter** contract: module dependency rules from `architecture.md` (`tasks`
+  imports only `contracts`; `decisions` only `contracts` + `org`; nothing imports `api`;
+  LangChain appears only under `knowledge`).
 - **No-send guard:** the Telegram adapter's test asserts the client object exposes no
   send/post method (settled #20 enforced structurally) and CI greps `sendMessage|send_message`
   out of `connectors/`.

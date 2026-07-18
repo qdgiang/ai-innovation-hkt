@@ -48,7 +48,8 @@
 - [ ] `infra/docker-compose.yml` (db w/ pgvector + healthcheck) + `Makefile`
       (`dev/test/eval/seed/replay/demo`) + `infra/.env.example`.
 - [ ] Alembic migration 0001 = the full data-model (including plumbing tables).
-- [ ] `ops` seed loader: `data-v2/org.json` → org tables (OPS-1, CAP-6 binding, [D5] keys).
+- [ ] `org` module v0 + seed loader: `data-v2/org.json` → org tables (OPS-1, CAP-6
+      binding, [D5] keys); its write port will later carry provisional-user creation.
 - [ ] L0 fixture-integrity tests + CI workflow (PR matrix from `testing-strategy.md`,
       including the v2-only guard and import-linter config).
 - [ ] Frontend: `create-next-app` shell only (builds in CI; no views yet).
@@ -59,7 +60,10 @@ CI runs L0 green on a PR.
 ## P1 — The pure domain core (the longest phase; no LLM, no platform anywhere)
 
 **Contract-first PR:** `contracts.commands` + `contracts.events` (full union), reviewed by
-both lanes.
+both lanes. The gateway rule is fixed here: **every** command type — including
+`RecordTaskUpdate`/`RecordSignal` — enters through `decisions.service` (authorization +
+`domain_events` append + idempotency); `tasks`/`signals` only ever consume events. Lane B
+builds the consumer plumbing; Lane A owns the append.
 
 **Lane A — `decisions` module:**
 - [ ] DEC-1 store + lifecycle states + append-only trigger.
@@ -72,7 +76,8 @@ both lanes.
 - [ ] `processed_commands` idempotency + expected-version check [EVM-021].
 
 **Lane B — `tasks` module + event plumbing:**
-- [ ] `domain_events` append + `projection_offsets` consumer loop (the D3 spine).
+- [ ] `projection_offsets` + the event-consumer loop (the D3 read side; the
+      `domain_events` append itself lives in `decisions` — Lane A).
 - [ ] TSK-1 fold (tasks + derived assignment/team joins; multi-PIC slots; `parent_task_id`).
 - [ ] TSK-2 update lanes (PIC auto / authority / confirm-card stub) · TSK-6 terminal locks.
 - [ ] TSK-3 dependencies (DAG check, G51 matrix, requested/confirmed/needs-rewire [EVM-006]).
@@ -106,7 +111,8 @@ end-to-end through commands only.
 - [ ] ING-5 linkage resolver (candidate assembly incl. foreign index; UNLINKED triage;
       G68 never-effective routing).
 - [ ] SIG-1 signal emission + ledger identity key [EVM-013] (promotion logic lands P3).
-- [ ] ING-6 provisional-user arrival (G44) + holdings-aware pruning stub (G62).
+- [ ] ING-6 provisional-user arrival (G44) via the `org` write port + holdings-aware
+      pruning stub (G62).
 
 **Exit (the go/no-go the old plan called "let's see if it works"):** `make eval` passes
 every L2 gate at batch 25 **and** 100, live. If precision won't converge after a solid
@@ -123,7 +129,7 @@ the demo) and re-plan — that decision is made *here*, never on stage.
       revalidation (G52).
 
 **Lane B — bulk sources + promotion:**
-- [ ] CAP-3 transcript connector + ING-6 speaker maps (G29/G30) + uploads versioning
+- [ ] CAP-3 transcript connector + speaker maps (G29/G30) + uploads versioning
       [EVM-011].
 - [ ] SIG-1 promotion (≥2 or 1+staleness → proposed blocked / requested edge, citations =
       all mentions) + SIG-2 parties + blocked structure.

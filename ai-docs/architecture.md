@@ -93,6 +93,7 @@ EverMind/
 │   ├── pyproject.toml
 │   ├── evermind/
 │   │   ├── contracts/      # shared Pydantic types + enums + command/event definitions
+│   │   ├── org/            # org & identity: projects/teams/groups/users/parties, config ops, seed
 │   │   ├── llm/            # provider-agnostic gateway (client, retry, JSON validation)
 │   │   ├── connectors/     # telegram/, replay/, transcript/  → writes messages+events
 │   │   ├── ingestion/      # windows, markers, hydration, extraction, linkage, signals-emit
@@ -121,20 +122,24 @@ call) · `commands.py`/`events.py` where relevant · internal helpers private.
 | Module | Owns (tables/state) | Must NOT |
 |---|---|---|
 | `contracts` | Pydantic types, enums, Command/Event unions — no logic, no IO | import anything from other modules |
+| `org` | `projects`, `teams`, `chat_groups`, `users`, `user_identities`, `user_teams`, `parties`, `config_ops` — the seed loader (OPS-1), group binding (CAP-6), and provisional-user creation (ING-6's write path, called by ingestion) | contain authority logic (that's `decisions`); call the LLM |
 | `llm` | provider client, retry/backoff, JSON-schema validation, request logging | contain prompts (callers own prompts); write to DB |
 | `connectors` | `messages`, `message_revisions`, `reaction_acts`, `group_members`, raw payloads | call the LLM; touch domain tables; **send anything to any platform** |
 | `ingestion` | windows/high-water marks, marker materializations, extraction runs, speaker maps | write decisions/tasks directly — it emits **commands** to the core |
-| `decisions` | `decisions`, `decision_citations`, `decision_tasks`, proposal state, acts, `processed_commands` | know platforms or prompts; call LLM; render UI text |
+| `decisions` | `decisions`, `decision_citations`, `decision_tasks`, proposal state, acts, `processed_commands`, `domain_events` — **and the universal command gateway** (every command type enters here; see pipeline note) | know platforms or prompts; call LLM; render UI text |
 | `tasks` | `tasks` + derived joins, `task_updates`, `task_dependencies` (fold outputs) | accept writes from anyone but the decision/update fold |
-| `signals` | `signals` ledger, `parties`, lamp computations, overload calc | post anywhere; mutate tasks (it proposes via commands) |
+| `signals` | `signals` ledger, lamp computations, overload calc | post anywhere; mutate tasks (it proposes via commands) |
 | `surfacing` | `feed_entries`, `inbox_items`, digest/retrospective read models | invent content — it renders domain events only |
 | `knowledge` | retrieval indexes, embeddings, Q&A logs | answer from raw chat wholesale; bypass truth-state filters |
 | `api` | routers, auth-lite persona scoping, command intake | contain business rules |
 | `scheduler` | job definitions + schedules | contain job logic (calls module ports) |
 
 **Import rule (enforced by import-linter in CI):** modules import `contracts` (+ `llm` where
-listed) and their own package. `api` and `scheduler` may import module *service ports*.
-Nothing imports `api`. `decisions` and `tasks` import no module but `contracts`.
+listed) and their own package. `org` is the one shared *data* port: `decisions` (authority
+lookups), `ingestion` (provisional-user creation via its write port), `signals` (party
+matching), and `surfacing` may import its service. `api` and `scheduler` may import module
+*service ports*. Nothing imports `api`. `tasks` imports nothing but `contracts`;
+`decisions` imports nothing but `contracts` + `org` (read-only).
 
 ## The write pipeline (one path for every surface)
 
@@ -168,7 +173,12 @@ Nothing imports `api`. `decisions` and `tasks` import no module but `contracts`.
   replaying it. Consumers track their own cursor (a `projection_offsets` row), so a rebuilt
   or new projection replays from zero without touching the write side.
 - Authorization lives in `decisions` (the only module that may declare something
-  `effective`). `api` does persona scoping only — *who is asking*; *may they* is domain.
+  `effective`). **`decisions.service` is the single write gateway for *every* command
+  type** — including non-decision commands like `RecordTaskUpdate`/`RecordSignal`: it
+  authorizes (the update lanes route here — PIC auto-apply vs decision-grade vs
+  confirm-card), appends `domain_events`, and enforces `processed_commands` idempotency
+  universally. `tasks` and `signals` never process raw commands — they only project
+  events. `api` does persona scoping only — *who is asking*; *may they* is domain.
 
 ## LLM gateway (`llm`)
 

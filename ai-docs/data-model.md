@@ -31,6 +31,10 @@ evidence_state     = live | edited_after_capture | source_deleted | redacted  --
 
 ## Org & identity
 
+> Owned by the **`org` module** (architecture.md §Backend module contract). Its write port
+> covers the seed (OPS-1), group binding (CAP-6), config ops, and provisional-user creation
+> (G44 — called by ingestion); `decisions` reads it for authority lookups.
+
 ```sql
 projects   {id, name,
             kind: project_kind,          -- [D4] explicit, not inferred from end_date
@@ -250,8 +254,13 @@ inbox_items  {id, persona_user_id, kind: proposal|confirm|challenge|diff|triage|
    same-unit decisions are born already-superseded (G31); impossible chronology → triage.
 6. **DAG**: dependency writes cycle-check; merge drops pair-internal edges then re-checks
    (G60).
-7. **No clock ever changes a status** (#18): the schema has no TTL/deadline columns; jobs
-   may only create visibility rows (feed/inbox/nudges).
+7. **No clock ever changes a *decision* status** (#18): decisions carry no TTL/deadline
+   columns; nudges, aged listings, and dismiss-stale are visibility rows or explicit human
+   acts. **Deliberate carve-out:** the signal ledger is working memory, not shared truth —
+   jobs MAY flip signals `open → expired` (contradiction / N quiet days) and
+   `open → promoted`, and `requested` dependency edges age into the digest's
+   needs-attention list (design-v2 §Signals, G35). Decision and task statuses are never
+   clock-touched.
 8. **No outbound**: no table stores chat-bound output (G58 retired by #20).
 9. **Tombstone, never delete**: messages/users/decisions are never hard-deleted; evidence
    state is derived (`evidence_state`) [EVM-015]; retention/redaction policy = roadmap.
