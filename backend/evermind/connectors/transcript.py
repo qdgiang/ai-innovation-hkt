@@ -12,11 +12,21 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import PurePath
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from evermind.connectors.models import Message, SpeakerMap, Upload
+
+
+class UnsupportedTranscriptType(ValueError):
+    """[EVM-011] transcripts are `.txt`/`.md` only — enforced here (the one
+    write path), not just hinted at by the FE's file-picker filter.
+    """
+
+
+_ALLOWED_SUFFIXES = (".txt", ".md")
 
 _TURN_RE = re.compile(r"^\[(\d{2}):(\d{2})\]\s+([^:]+):\s*(.*)$")
 _DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
@@ -38,7 +48,15 @@ class TranscriptConnector:
         """Parse `content`, store an `Upload` row (versioned by filename),
         `Message` rows (source="transcript"), and a `SpeakerMap` row per
         distinct speaker seen. Returns the upload id.
+
+        Raises `UnsupportedTranscriptType` for anything but `.txt`/`.md`
+        [EVM-011]; `mime` is recorded as metadata, the extension is the gate.
         """
+        suffix = PurePath(filename).suffix.lower()
+        if suffix not in _ALLOWED_SUFFIXES:
+            raise UnsupportedTranscriptType(
+                f"unsupported transcript type {suffix or filename!r} — .txt/.md only [EVM-011]"
+            )
         upload = Upload(
             filename=filename, mime=mime, uploaded_at=datetime.now(timezone.utc),
             uploaded_by=uploaded_by, version=self._next_version(filename),

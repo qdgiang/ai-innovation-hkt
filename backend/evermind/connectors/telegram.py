@@ -2,8 +2,9 @@
 
 NEVER SENDS (settled #20 — read-only capture is also the whole permission
 story). This class intentionally exposes no send/post method; L3's no-send
-guard test asserts that structurally, and CI greps `sendMessage|send_message`
-out of `connectors/` (testing-strategy.md §L3).
+guard test asserts that structurally, and CI greps Bot-API send-method names
+out of `connectors/` (testing-strategy.md §L3 — so never write those tokens
+literally anywhere in this package, docstrings included).
 
 Runbook facts (can't be verified live in this sandbox — no real bot token):
 privacy mode must be disabled via BotFather *before* joining the group; bots

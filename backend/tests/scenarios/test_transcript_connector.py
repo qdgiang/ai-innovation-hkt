@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from evermind.connectors.models import Message, SpeakerMap, Upload
 from evermind.connectors.replay import ReplayConnector
-from evermind.connectors.transcript import TranscriptConnector
+from evermind.connectors.transcript import TranscriptConnector, UnsupportedTranscriptType
 
 DATA_V2 = Path(__file__).resolve().parents[3] / "data-v2"
 TRANSCRIPT = DATA_V2 / "meeting-2026-09-07.txt"
@@ -74,6 +75,23 @@ def test_reupload_creates_a_new_version_never_overwrites(db_session: Session):
 
     all_turns = db_session.scalars(select(Message).where(Message.source == "transcript")).all()
     assert len(all_turns) == 76  # both uploads' turns coexist (re-upload ≠ overwrite)
+
+
+def test_upload_rejects_non_txt_md(db_session: Session):
+    """[EVM-011] txt/md only — the gate is server-side, not just the FE's
+    file-picker `accept` hint."""
+    with pytest.raises(UnsupportedTranscriptType):
+        TranscriptConnector(db_session).upload(
+            filename="meeting-2026-09-07.pdf", content="[00:01] Linh: hi", uploaded_by=1,
+        )
+    assert db_session.scalars(select(Upload)).first() is None  # nothing half-written
+
+
+def test_upload_accepts_md(db_session: Session):
+    upload_id = TranscriptConnector(db_session).upload(
+        filename="meeting-2026-09-07.md", content="[00:01] Linh: hi", uploaded_by=1,
+    )
+    assert db_session.get(Upload, upload_id) is not None
 
 
 def test_transcript_and_replay_message_ids_never_collide(db_session: Session):

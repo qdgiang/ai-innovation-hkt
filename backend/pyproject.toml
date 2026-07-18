@@ -47,6 +47,10 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 pythonpath = ["."]
 
+[[tool.mypy.overrides]]
+module = "apscheduler.*"
+ignore_missing_imports = true
+
 [tool.importlinter]
 root_package = "evermind"
 

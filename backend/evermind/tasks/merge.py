@@ -6,9 +6,10 @@ refine parent), not a new op" — it's just ordinary `description`/
 """
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
+from evermind.contracts.enums import TaskStatus
 from evermind.tasks import dependencies
 from evermind.tasks.dependencies import DependencyCycleError
 from evermind.tasks.models import (
@@ -32,12 +33,12 @@ def merge_tasks(session: Session, *, absorbed_id: int, survivor_id: int) -> None
     _union_slot_table(session, TaskTeam, "team_id", absorbed_id, survivor_id)
 
     session.execute(
-        TaskUpdate.__table__.update()
+        update(TaskUpdate)
         .where(TaskUpdate.task_id == absorbed_id)
         .values(task_id=survivor_id)
     )
     session.execute(
-        TaskDecisionLog.__table__.update()
+        update(TaskDecisionLog)
         .where(TaskDecisionLog.task_id == absorbed_id)
         .values(task_id=survivor_id)
     )
@@ -55,7 +56,7 @@ def merge_tasks(session: Session, *, absorbed_id: int, survivor_id: int) -> None
 
     _redirect_edges(session, absorbed_id, survivor_id)
 
-    absorbed.status = "merged"
+    absorbed.status = TaskStatus.MERGED
     absorbed.merged_into = survivor_id
 
     # the session uses autoflush=False (db/session.py) — the cycle check
