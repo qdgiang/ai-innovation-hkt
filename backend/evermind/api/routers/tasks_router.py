@@ -14,22 +14,25 @@ router = APIRouter(tags=["tasks"])
 @router.get("/tasks")
 def list_tasks(
     session: Session = Depends(get_session),
-    project: str | None = None,
-    team: str | None = None,
+    project: int | None = None,
+    team: int | None = None,
     status: str | None = None,
-    pic: str | None = None,
-    type: str | None = None,
+    pic: int | None = None,
     q: str | None = None,
 ):
-    """TODO(B): stakeholder filter matrix (time/PIC/team/status/type)."""
-    raise NotImplementedError
+    return TasksService(session).list_tasks(
+        project_id=project, team_id=team, pic_user_id=pic,
+        statuses=(status,) if status else None, description_contains=q,
+    )
 
 
 @router.get("/tasks/{task_id}/reasoning")
 def task_reasoning(task_id: int, session: Session = Depends(get_session)):
-    """TODO(B): popup — grounded summary, log (maker/time/status), show-inactive,
-    dual stamps, citation badges (design-v2.md §Reasoning views)."""
-    raise NotImplementedError
+    """Grounded summary + log (design-v2.md §Reasoning views). Citation badges
+    and show-inactive need `decisions` (Lane A, not built) — see
+    TasksService.reasoning_log's docstring.
+    """
+    return TasksService(session).reasoning_log(task_id)
 
 
 @router.get("/tasks/{task_id}/at")

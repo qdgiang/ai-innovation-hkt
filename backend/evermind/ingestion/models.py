@@ -1,5 +1,15 @@
-"""Owner: A. Tables: ingest_cursors, extraction_windows, materializations, uploads,
-speaker_maps (data-model.md §Ingestion state; architecture.md module table).
+"""Owner: A. Tables: ingest_cursors, extraction_windows, materializations
+(data-model.md §Ingestion state).
+
+`uploads`/`speaker_maps` live in `evermind.connectors.models` instead, not
+here — despite data-model.md grouping them under "Ingestion state" and
+architecture.md's module table mentioning "speaker maps" under `ingestion`.
+plan.md's P3 Lane B explicitly assigns "CAP-3 transcript connector + speaker
+maps (G29/G30) + uploads versioning" to B, and the writer-owns-the-table
+principle (already applied to `db.eventlog` for the same reason) says the
+table belongs where CAP-3's upload flow actually writes it. `ingestion`
+reads `speaker_maps` for linkage the same way it reads `messages` — via
+`connectors.service`, never a direct table import.
 
 Reads messages via `connectors.service` (B) — a read-only service port, never
 `connectors.models` directly (work-split.md interface #1).
@@ -8,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from evermind.db.base import Base
@@ -56,27 +66,3 @@ class Materialization(Base):
     unit_key: Mapped[str]
     decision_id: Mapped[int | None]
     update_id: Mapped[int | None]
-
-
-class Upload(Base):
-    """[EVM-011] txt/md only; re-upload = NEW version row, never overwrite."""
-
-    __tablename__ = "uploads"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    filename: Mapped[str]
-    mime: Mapped[str]
-    version: Mapped[int] = mapped_column(default=1)
-    uploaded_at: Mapped[datetime]
-    uploaded_by: Mapped[int]
-
-
-class SpeakerMap(Base):
-    """G30 — per-upload; unmapped speaker => their decisions born proposed."""
-
-    __tablename__ = "speaker_maps"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    upload_id: Mapped[int] = mapped_column(ForeignKey("uploads.id"))
-    display_name: Mapped[str]
-    user_id: Mapped[int | None]

@@ -72,3 +72,30 @@ class GroupMember(Base):
     user_id: Mapped[int] = mapped_column(primary_key=True)
     joined_at: Mapped[datetime]
     left_at: Mapped[datetime | None]
+
+
+class Upload(Base):
+    """[EVM-011] txt/md only; re-upload = NEW version row, never overwrite.
+    CAP-3 (plan.md P3 Lane B) writes this — see ingestion/models.py's note on
+    why this table lives here rather than in `ingestion`.
+    """
+
+    __tablename__ = "uploads"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filename: Mapped[str]
+    mime: Mapped[str]
+    version: Mapped[int] = mapped_column(default=1)
+    uploaded_at: Mapped[datetime]
+    uploaded_by: Mapped[int]
+
+
+class SpeakerMap(Base):
+    """G30 — per-upload; unmapped speaker => their decisions born proposed."""
+
+    __tablename__ = "speaker_maps"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    upload_id: Mapped[int] = mapped_column(ForeignKey("uploads.id"))
+    display_name: Mapped[str]
+    user_id: Mapped[int | None]

@@ -27,4 +27,19 @@ async function postCommand<T>(command: CommandEnvelope & Record<string, unknown>
   return res.json();
 }
 
-export const api = { get: apiGet, postCommand };
+// CAP-3 upload flow (DSH-8) — the one write path that ISN'T a `POST /commands`
+// envelope: `/uploads/transcript` takes a raw file, not a typed command
+// (architecture.md's API sketch lists it separately for this reason).
+async function uploadTranscript(file: File, persona: string): Promise<{ upload_id: number }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/uploads/transcript`, {
+    method: "POST",
+    headers: { "X-Persona": persona },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`POST /uploads/transcript failed: ${res.status}`);
+  return res.json();
+}
+
+export const api = { get: apiGet, postCommand, uploadTranscript };

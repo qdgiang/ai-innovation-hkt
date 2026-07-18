@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/decisions", label: "Decision log", owner: "A" },
   { href: "/digest", label: "Digest", owner: "B" },
   { href: "/blockers", label: "Blocker radar", owner: "B" },
+  { href: "/upload", label: "Upload transcript", owner: "B" },
   { href: "/qa", label: "Ask EverMind", owner: "A" },
 ];
 

@@ -30,6 +30,12 @@ jobs:
             echo "::error::reference to deleted v1 data/ path found"; exit 1
           fi
 
+      - name: no-send guard (settled #20 — connectors never sends)
+        run: |
+          if grep -rIliE "sendMessage|send_message" backend/evermind/connectors/; then
+            echo "::error::a send-capable call appeared in connectors/ — capture must stay read-only"; exit 1
+          fi
+
       - uses: astral-sh/setup-uv@v3
       - run: cd backend && uv sync --all-extras --dev
 
@@ -38,8 +44,9 @@ jobs:
 
       - name: lint
         run: |
-          cd backend && uv run ruff check .
-          cd backend && uv run lint-imports
+          cd backend
+          uv run ruff check .
+          uv run lint-imports
 
       - name: L0 + L1 + L3 (pytest)
         run: cd backend && uv run pytest -q

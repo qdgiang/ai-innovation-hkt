@@ -19,5 +19,7 @@ def get_inbox(session: Session = Depends(get_session), who: str = Depends(person
 
 
 @router.get("/digest/{team}")
-def get_digest(team: int, week: str, session: Session = Depends(get_session)):
-    return SurfacingService(session).digest_for(team, week)
+def get_digest(team: int, week: str | None = None, session: Session = Depends(get_session)):
+    # TODO(B): `week` date-range scoping isn't implemented yet — digest_for
+    # currently always reflects live state, not a specific past week.
+    return SurfacingService(session).digest_for(team)
