@@ -20,3 +20,6 @@ dist/
 
 # personal scratch notes
 huytr/
+
+# isolated feature worktrees
+.worktrees/
