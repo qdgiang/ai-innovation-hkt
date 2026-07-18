@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from evermind.db.base import Base
@@ -25,7 +25,7 @@ class FeedEntry(Base):
     kind: Mapped[str]
     decision_id: Mapped[int | None]
     task_id: Mapped[int | None]
-    payload: Mapped[dict]
+    payload: Mapped[dict] = mapped_column(JSON)
     batch_key: Mapped[str]
     superseded_by_entry: Mapped[int | None] = mapped_column(ForeignKey("feed_entries.id"))
 
