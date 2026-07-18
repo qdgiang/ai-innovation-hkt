@@ -1,6 +1,8 @@
-# Features — Ambient Org Memory
+# Features — EverMind (ambient org memory) — v1 catalog
 
-> Working name: **OrgMemory** (rename later). Concept: passively capture coordination signals from where the NPO already communicates (Telegram, meetings), extract typed records (decisions / blockers / status) with source citations using an LLM, and serve them back as a weekly digest, cited Q&A, blocker alerts, and onboarding briefs. Core design rule: **zero new habits for volunteers** — capture is ambient, plus one optional lightweight marker convention (`!decision`, `!blocked`) as the high-precision path.
+> Name: **EverMind** (renamed from working name 2026-07-18). ⚠ This is the **v1** feature
+> catalog; the record model below is superseded by `design-v2.md` (decision-driven tasks) where
+> they conflict. Concept: passively capture coordination signals from where the NPO already communicates (Telegram, meetings), extract typed records (decisions / blockers / status) with source citations using an LLM, and serve them back as a weekly digest, cited Q&A, blocker alerts, and onboarding briefs. Core design rule: **zero new habits for volunteers** — capture is ambient, plus one optional lightweight marker convention (`!decision`, `!blocked`) as the high-precision path.
 
 ## Design principles (from the problem statement, taken literally)
 

@@ -1,19 +1,19 @@
-name: orgmemory
+name: evermind
 
 services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_USER: orgmemory
-      POSTGRES_PASSWORD: orgmemory
-      POSTGRES_DB: orgmemory
+      POSTGRES_USER: evermind
+      POSTGRES_PASSWORD: evermind
+      POSTGRES_DB: evermind
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orgmemory"]
+      test: ["CMD-SHELL", "pg_isready -U evermind"]
       interval: 5s
       timeout: 3s
       retries: 10

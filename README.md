@@ -1,9 +1,17 @@
 # ai-innovation-hkt
 
-**OrgMemory** — ambient org memory for a volunteer NPO (48h hackathon build).
-Passive capture from Telegram + meeting transcripts → LLM extraction into typed,
-cited records (decision / blocker / status) → weekly digest, cited Q&A, blocker
-alerts, onboarding briefs. Planning docs live in [`ai-docs/`](ai-docs/).
+**EverMind** — ambient institutional memory and decision-driven coordination for a
+volunteer NPO (48h hackathon build). It listens where the team already talks (group
+chat + meeting transcripts), turns conversation into an append-only, cited graph of
+**decisions** that drive **tasks**, and serves the memory back as per-team digests,
+answers-with-receipts, blocker radar, and onboarding briefs — with the org's own
+authority structure deciding what becomes real.
+
+**Start here: [`ai-docs/VISION.md`](ai-docs/VISION.md)** (the full picture) ·
+design source of truth: [`ai-docs/design-v2.md`](ai-docs/design-v2.md) (rev 9) ·
+verification: [`ai-docs/scenarios/`](ai-docs/scenarios/) (43 traces, gap register) ·
+demo/eval fixtures: [`data-v2/`](data-v2/). ⚠ `ai/schemas.py` still reflects the v1
+contracts and is superseded by design-v2 until rebuilt.
 
 ## Layout
 

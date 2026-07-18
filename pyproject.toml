@@ -1,7 +1,7 @@
 [project]
-name = "orgmemory"
+name = "evermind"
 version = "0.1.0"
-description = "OrgMemory — ambient org memory for a volunteer NPO (48h hackathon build)"
+description = "EverMind — ambient org memory for a volunteer NPO (48h hackathon build)"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

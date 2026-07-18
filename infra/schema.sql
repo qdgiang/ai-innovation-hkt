@@ -1,4 +1,4 @@
--- OrgMemory canonical Postgres DDL (postgres:17).
+-- EverMind canonical Postgres DDL (postgres:17).
 -- Applied automatically by infra/docker-compose.yml (initdb mount); Railway gets
 -- it via Alembic from Phase 2. SQLite dev uses SQLAlchemy create_all instead and
 -- enforces the citation rule app-side (backend/app/repository.py) — the trigger
