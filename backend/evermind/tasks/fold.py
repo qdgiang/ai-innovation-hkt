@@ -27,7 +27,12 @@ from evermind.tasks.models import Task, TaskAssignment, TaskTeam
 
 logger = logging.getLogger(__name__)
 
-TASK_FIELD_FACETS = {"description", "status", "start_date", "end_date", "type", "kind"}
+TASK_FIELD_FACETS = {
+    "description", "status", "start_date", "end_date", "type", "kind",
+    "parent_task_id",  # [EVM-014] split = compose: create children + refine
+                       # parent via ordinary facet ops, design-v2.md is explicit
+                       # this is "not a new op" — see tasks/merge.py's docstring.
+}
 
 
 def _task_id_from_target(target: str) -> int:
@@ -96,6 +101,24 @@ def apply_op(session: Session, *, decision_id: int, op: dict) -> None:
         _get_or_create_task(session, task_id)
         _apply_slot_op(session, TaskTeam, task_id=task_id, verb=verb, value=value,
                         slot_field="team_id")
+        return
+
+    if facet == "project":
+        # TSK-5 cross-project transfer (G59): the two-key authority check +
+        # re-dating under the destination are decisions'/callers' job; this
+        # fold's part is: move the row, clear its team membership (destination
+        # re-teams via a following `team` op, else falls to project-level per
+        # G48), and revalidate its dependency edges against G51 (violations ->
+        # needs_rewire, never silently kept as if still valid).
+        task_id = _task_id_from_target(target)
+        task = _get_or_create_task(session, task_id)
+        if verb != "set" or not isinstance(value, dict):
+            raise ValueError("facet 'project' expects op='set' with a dict value")
+        task.project_id = value["project_id"]
+        task.project_kind = value["project_kind"]
+        session.query(TaskTeam).filter_by(task_id=task_id).delete()
+        session.flush()
+        dependencies.revalidate_edges_for_transfer(session, task_id)
         return
 
     if facet == "note":

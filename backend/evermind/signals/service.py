@@ -139,7 +139,32 @@ class SignalsService:
             },
         ]
 
-    def overload_for(self, user_id: int) -> dict:
-        """TODO(B, P6): SIG-4 — per-day concurrent load, next 14 days,
-        warn-don't-block."""
-        raise NotImplementedError
+    def overload_for(self, user_id: int, *, now: datetime | None = None) -> dict:
+        """SIG-4 — per-day concurrent load, next 14 days, across ALL the
+        person's teams (already implicit: `list_tasks(pic_user_id=...)` isn't
+        project-scoped). Weight: urgent x2, due-<=7d extra. Warn-don't-block —
+        this only reports; EVM-017 bounds it (no history mining, no rankings,
+        no cross-person comparison — by construction, since it only takes a
+        single user_id).
+        """
+        now = now or datetime.now(timezone.utc)
+        my_tasks = TasksService(self.session).list_tasks(
+            pic_user_id=user_id, statuses=("todo", "doing"),
+        )
+        load_by_day: dict[str, float] = {}
+        for day_offset in range(14):
+            day = (now + timedelta(days=day_offset)).date()
+            load = 0.0
+            for task in my_tasks:
+                start = task.start_date.date() if task.start_date else None
+                end = task.end_date.date() if task.end_date else None
+                if start is not None and day < start:
+                    continue
+                if end is not None and day > end:
+                    continue
+                weight = 2.0 if task.type == "urgent" else 1.0
+                if end is not None and (end - now.date()).days <= 7:
+                    weight += 1.0
+                load += weight
+            load_by_day[day.isoformat()] = load
+        return {"user_id": user_id, "load_by_day": load_by_day}

@@ -52,6 +52,52 @@ def _has_path(session: Session, *, start: int, target: int) -> bool:
     return False
 
 
+def has_cycle_through(session: Session, task_id: int) -> bool:
+    """Is there any path from `task_id` back to itself via >=1 edge? Used by
+    TSK-4 merge (G60) after redirecting edges onto the survivor — `_has_path`
+    alone can't answer this directly since `start == target` trivially "finds"
+    itself at step zero.
+    """
+    successors = session.scalars(
+        select(TaskDependency.successor_task_id).where(
+            TaskDependency.predecessor_task_id == task_id
+        )
+    ).all()
+    return any(_has_path(session, start=s, target=task_id) for s in successors)
+
+
+def revalidate_edges_for_transfer(session: Session, task_id: int) -> list[TaskDependency]:
+    """TSK-5 — after a cross-project transfer changes `task_id`'s
+    `project_id`/`project_kind`, re-check every edge touching it against G51;
+    violating edges flip to `needs_rewire` (never silently dropped or kept
+    confirmed against a now-illegal pairing). Returns the edges that flipped.
+    """
+    task = session.get(Task, task_id)
+    if task is None:
+        raise LookupError(f"task {task_id} not found")
+    edges = session.scalars(
+        select(TaskDependency).where(
+            (TaskDependency.predecessor_task_id == task_id)
+            | (TaskDependency.successor_task_id == task_id)
+        )
+    ).all()
+    flipped = []
+    for edge in edges:
+        other_id = (
+            edge.successor_task_id if edge.predecessor_task_id == task_id
+            else edge.predecessor_task_id
+        )
+        other = session.get(Task, other_id)
+        if other is None:
+            continue
+        predecessor = task if edge.predecessor_task_id == task_id else other
+        successor = other if edge.predecessor_task_id == task_id else task
+        if not _admitted(predecessor, successor):
+            edge.status = DependencyStatus.NEEDS_REWIRE
+            flipped.append(edge)
+    return flipped
+
+
 def add_edge(session: Session, *, predecessor_id: int, successor_id: int, decision_id: int) -> None:
     predecessor = session.get(Task, predecessor_id)
     successor = session.get(Task, successor_id)

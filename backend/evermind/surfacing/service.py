@@ -187,14 +187,58 @@ class SurfacingService:
 
     # -- P6 (à la carte) --------------------------------------------------
 
-    def close_out(self, project_id: int) -> dict:
-        """TODO(B, P6): SRF-4 — retrospective digest on project close (G41)."""
-        raise NotImplementedError
+    def close_out(self, project_id: int, *, now: datetime | None = None) -> dict:
+        """SRF-4 — retrospective digest on project close (G41): shipped /
+        didn't-ship / canceled + final counters, computed from `tasks` (real).
+        The "next-time policies" decisions carry needs `decisions` (Lane A) —
+        documented TODO, not guessed at.
+        """
+        now = now or datetime.now(timezone.utc)
+        tasks = TasksService(self.session).list_tasks(project_id=project_id)
+        shipped = [t for t in tasks if t.status == "done"]
+        canceled = [t for t in tasks if t.status == "canceled"]
+        not_shipped = [t for t in tasks if t.status not in ("done", "canceled", "merged")]
+        return {
+            "project_id": project_id,
+            "generated_at": now,
+            "shipped": [{"task_id": t.id, "description": t.description} for t in shipped],
+            "not_shipped": [{"task_id": t.id, "description": t.description, "status": t.status}
+                            for t in not_shipped],
+            "canceled": [{"task_id": t.id, "description": t.description} for t in canceled],
+            "final_counters": {"total": len(tasks), "shipped": len(shipped),
+                               "not_shipped": len(not_shipped), "canceled": len(canceled)},
+            # TODO(B, blocked on Lane A): next-time policy decisions.
+        }
 
     def onboarding_brief(self, user_id: int) -> dict:
-        """TODO(B, P6): SRF-5 — filtered read: active work, decisions shaping it, blockers."""
-        raise NotImplementedError
+        """SRF-5 — the rotation-in beat: a new (or returning) volunteer's
+        active work + open blockers on it, filtered by PIC assignment (real,
+        `tasks`). "Decisions shaping it" needs `decisions` (Lane A) — TODO.
+        """
+        tasks_service = TasksService(self.session)
+        my_tasks = tasks_service.list_tasks(pic_user_id=user_id, statuses=("todo", "doing", "blocked"))
+        blockers = [t for t in my_tasks if t.status == "blocked"]
+        return {
+            "user_id": user_id,
+            "active_work": [{"task_id": t.id, "description": t.description, "status": t.status}
+                            for t in my_tasks],
+            "blockers": [{"task_id": t.id, "waiting_on_text": t.blocked_waiting_on_text}
+                        for t in blockers],
+            # TODO(B, blocked on Lane A): decisions shaping this work.
+        }
 
     def offboarding_sweep(self, user_id: int) -> dict:
-        """TODO(B, P6): SRF-6 — everything the departing volunteer holds, before it's lost."""
-        raise NotImplementedError
+        """SRF-6 — the rotation-out beat: everything a departing volunteer
+        currently holds (non-terminal PIC assignments), so a lead can
+        reassign before it's lost. Same underlying read as onboarding_brief,
+        different framing (G33).
+        """
+        holdings = TasksService(self.session).list_tasks(
+            pic_user_id=user_id, statuses=("todo", "doing", "blocked"),
+        )
+        return {
+            "user_id": user_id,
+            "holdings": [{"task_id": t.id, "description": t.description, "status": t.status}
+                        for t in holdings],
+            "count": len(holdings),
+        }
