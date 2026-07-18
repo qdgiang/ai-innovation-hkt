@@ -5,10 +5,12 @@ from evermind.org.service import OrgService
 
 
 def test_seed_loads_and_maps(org_ids, org: OrgService):
-    assert set(org_ids["projects"]) == {"P-TT", "P-CL"}
-    assert set(org_ids["teams"]) == {"TEAM-EV", "TEAM-ED"}
-    assert len(org_ids["users"]) == 9
+    assert set(org_ids["projects"]) == {"P-TT", "P-CL", "P-4AE", "P-3AE"}
+    assert set(org_ids["teams"]) == {"TEAM-EV", "TEAM-ED", "TEAM-4AE", "TEAM-3AE"}
+    assert len(org_ids["users"]) == 13  # 9 corpus personas + 4 real live-demo members
     assert "trang" not in org_ids["users"]  # she must arrive provisionally (G44)
+    # one project per real telegram group (runbook §8), seeded with real chat ids
+    assert {"G-4AE", "G-3AE"} <= set(org_ids["groups"])
 
     linh = org.get_user_by_handle("linh")
     assert linh.role_rank == 3  # linh is coordinator
@@ -23,6 +25,36 @@ def test_seed_loads_and_maps(org_ids, org: OrgService):
     thao = org.get_user_by_handle("thao")
     assert len(org.teams_of_user(khoa.id)) == 2
     assert len(org.teams_of_user(thao.id)) == 2
+
+
+def test_seed_skips_fill_me_placeholders(db_session, tmp_path):
+    """Runbook fill-in contract: FILL_ME group chat ids and identity keys must
+    never become real rows — they'd linger as orphans once real values land."""
+    import json
+    from sqlalchemy import select
+    from evermind.org.models import UserIdentity
+    from evermind.org.seed import load_org_seed
+
+    seed = {
+        "projects": [{"id": "P-X", "name": "X", "kind": "campaign"}],
+        "teams": [{"id": "T-X", "project_id": "P-X", "name": "x"}],
+        "chat_groups": [{"id": "G-X", "platform": "telegram",
+                         "platform_chat_id": "FILL_ME_CHAT_ID",
+                         "project_id": "P-X", "team_id": "T-X"}],
+        "users": [{"handle": "x", "name": "X", "role_rank": 1, "status": "active",
+                   "identities": [
+                       {"platform": "telegram", "platform_user_id": "FILL_ME_USERNAME"},
+                       {"platform": "telegram", "platform_user_id": "real-key"},
+                   ]}],
+    }
+    path = tmp_path / "org.json"
+    path.write_text(json.dumps(seed), encoding="utf-8")
+
+    ids = load_org_seed(db_session, path)
+
+    assert "G-X" not in ids["groups"]
+    keys = set(db_session.scalars(select(UserIdentity.platform_user_id)))
+    assert keys == {"real-key"}
 
 
 def test_seed_is_idempotent(db_session, org_ids):

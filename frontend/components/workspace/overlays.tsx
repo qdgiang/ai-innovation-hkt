@@ -7,8 +7,8 @@ import { api } from "@/lib/api-client";
 import { personaFromDocument } from "@/lib/persona-client";
 import type { QAResponse } from "@/lib/types";
 import {
-  WsBundle, WsEvidence, avatarClass, decisionLabel, initials, messageLabel,
-  statusLabel, taskLabel,
+  ORG_TZ, WsBundle, WsEvidence, avatarClass, decisionLabel, initials,
+  messageLabel, statusLabel, taskLabel,
 } from "@/lib/workspace";
 import { Icon } from "./icons";
 
@@ -46,7 +46,7 @@ export function EvidenceModal({
                   <span className={`avatar ${avatarClass(item.author_user_id)}`}>{initials(name)}</span>
                   {name}
                 </span>
-                <span>{new Date(item.ts).toLocaleString("vi-VN")} · {item.channel ?? item.source}</span>
+                <span>{new Date(item.ts).toLocaleString("vi-VN", { timeZone: ORG_TZ })} · {item.channel ?? item.source}</span>
               </div>
               <blockquote>“{item.text}”</blockquote>
               <div className="proof-context">

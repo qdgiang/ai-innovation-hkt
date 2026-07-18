@@ -4,6 +4,8 @@ table access").
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,6 +25,31 @@ class ConnectorsService:
             .order_by(Message.id)
         )
         return list(self.session.scalars(stmt))
+
+    def read_pending(self, group_id: int, *, after: datetime,
+                     limit: int) -> list[Message]:
+        """Time-ordered unprocessed slice for the extraction lane (ING-2).
+
+        Ordered by (ts, id) — NOT id alone — because live sources' synthetic
+        ids are not time-ordered (telegram folds a hash into its id range).
+        When the cap lands mid-second the window extends through every message
+        sharing the boundary ts: the extraction cursor is second-granular, so
+        a strict `ts >` next window would skip the remainder forever.
+        """
+        stmt = (
+            select(Message)
+            .where(Message.group_id == group_id, Message.ts > after,
+                   Message.tombstoned_at.is_(None))
+            .order_by(Message.ts, Message.id)
+            .limit(limit + 64)
+        )
+        rows = list(self.session.scalars(stmt))
+        if len(rows) <= limit:
+            return rows
+        cut, boundary = limit, rows[limit - 1].ts
+        while cut < len(rows) and rows[cut].ts == boundary:
+            cut += 1
+        return rows[:cut]
 
     def current_text(self, message_id: int) -> tuple[str, int]:
         """(text, rev) at the current revision — for citation `rev_at_capture`/`rev_at_act`."""

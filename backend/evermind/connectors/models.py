@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from evermind.contracts.enums import MessageKind
@@ -23,6 +23,11 @@ class Message(Base):
     source: Mapped[str]  # replay | telegram | transcript
     group_id: Mapped[int | None]
     author_identity: Mapped[str]
+    # [D5] the platform's STABLE numeric user id (as text, platform-agnostic),
+    # when the platform provides one. author_identity stays the display-ish
+    # handle (telegram: username when set) — usernames are mutable, so identity
+    # resolution prefers this column (ingestion/identity.py).
+    author_platform_id: Mapped[str | None]
     ts: Mapped[datetime]
     text: Mapped[str]  # caption when kind is media
     thread_ref: Mapped[int | None]  # reply target (message id)
@@ -55,7 +60,7 @@ class ReactionAct(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     message_id: Mapped[int] = mapped_column(ForeignKey("messages.id"))
-    user_id: Mapped[int]
+    user_id: Mapped[int] = mapped_column(BigInteger)  # platform id: exceeds int32
     emoji: Mapped[str]
     ts: Mapped[datetime]
     removed_at: Mapped[datetime | None]
@@ -69,7 +74,8 @@ class GroupMember(Base):
     __tablename__ = "group_members"
 
     group_id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(primary_key=True)
+    # the PLATFORM user id — modern telegram ids (and bot ids) exceed int32
+    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     joined_at: Mapped[datetime]
     left_at: Mapped[datetime | None]
 

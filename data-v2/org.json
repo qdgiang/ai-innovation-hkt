@@ -2,19 +2,26 @@
   "meta": {
     "purpose": "v2 org seed (design-v2 rev 9): projects, teams, groups, users, memberships, parties",
     "note": "trang is deliberately ABSENT — she arrives mid-corpus (m0071) and must be auto-created as a provisional user (G44). platform_user_id values are synthetic.",
+    "live_note": "P-4AE + P-3AE = the real-Telegram capture demo (runbook §8), one project per real group, filled 2026-07-19. G-4AE = supergroup 'Hội 4 anh em' (verified via getChat); G-3AE = the 3-person group (minhpq/giangqd/huytq) — id as provided, unverifiable until the bot is added there. Real members carry two telegram identities each (username + numeric user id) because the connector records username when present, numeric id otherwise. Unlisted senders become provisional users (G44).",
     "authored": "2026-07-18"
   },
   "projects": [
     {"id": "P-TT", "name": "Đêm hội Trăng Rằm 2026", "kind": "campaign", "end_date": "2026-09-26", "status": "active"},
-    {"id": "P-CL", "name": "Weekend Classes", "kind": "program", "end_date": null, "status": "active"}
+    {"id": "P-CL", "name": "Weekend Classes", "kind": "program", "end_date": null, "status": "active"},
+    {"id": "P-4AE", "name": "Hội 4 anh em", "kind": "program", "end_date": null, "status": "active"},
+    {"id": "P-3AE", "name": "Hội Senior", "kind": "program", "end_date": null, "status": "active"}
   ],
   "teams": [
     {"id": "TEAM-EV", "project_id": "P-TT", "name": "events"},
-    {"id": "TEAM-ED", "project_id": "P-CL", "name": "education"}
+    {"id": "TEAM-ED", "project_id": "P-CL", "name": "education"},
+    {"id": "TEAM-4AE", "project_id": "P-4AE", "name": "members"},
+    {"id": "TEAM-3AE", "project_id": "P-3AE", "name": "members"}
   ],
   "chat_groups": [
     {"id": "G-TT", "platform": "generic-chat", "platform_chat_id": "grp-trungthu-001", "project_id": "P-TT", "team_id": "TEAM-EV", "channel_name": "aiv-trungthu"},
-    {"id": "G-CL", "platform": "generic-chat", "platform_chat_id": "grp-classes-001", "project_id": "P-CL", "team_id": "TEAM-ED", "channel_name": "aiv-classes"}
+    {"id": "G-CL", "platform": "generic-chat", "platform_chat_id": "grp-classes-001", "project_id": "P-CL", "team_id": "TEAM-ED", "channel_name": "aiv-classes"},
+    {"id": "G-4AE", "platform": "telegram", "platform_chat_id": "-1004357387227", "project_id": "P-4AE", "team_id": "TEAM-4AE"},
+    {"id": "G-3AE", "platform": "telegram", "platform_chat_id": "-5476570466", "project_id": "P-3AE", "team_id": "TEAM-3AE"}
   ],
   "role_rank_map": {"coordinator": 3, "lead": 2, "member": 1},
   "users": [
@@ -26,9 +33,24 @@
     {"handle": "an",    "name": "Bui Hoai An",      "role_rank": 1, "manager": "linh", "platform_user_id": "u1006", "status": "active"},
     {"handle": "khoa",  "name": "Le Anh Khoa",      "role_rank": 1, "manager": "linh", "platform_user_id": "u1007", "status": "active"},
     {"handle": "thao",  "name": "Do Thu Thao",      "role_rank": 1, "manager": "mai",  "platform_user_id": "u1008", "status": "active"},
-    {"handle": "tuan",  "name": "Nguyen Anh Tuan",  "role_rank": 1, "manager": "mai",  "platform_user_id": "u1009", "status": "active"}
+    {"handle": "tuan",  "name": "Nguyen Anh Tuan",  "role_rank": 1, "manager": "mai",  "platform_user_id": "u1009", "status": "active"},
+    {"handle": "minhnd", "name": "Minh ND", "role_rank": 1, "manager": "linh", "status": "active",
+     "identities": [{"platform": "telegram", "platform_user_id": "minhnd"}, {"platform": "telegram", "platform_user_id": "7826935730"}]},
+    {"handle": "giangqd", "name": "Giang QD", "role_rank": 1, "manager": "linh", "status": "active",
+     "identities": [{"platform": "telegram", "platform_user_id": "qdgiang"}, {"platform": "telegram", "platform_user_id": "1894749960"}]},
+    {"handle": "minhpq", "name": "Minh Phùng", "role_rank": 2, "manager": "linh", "status": "active",
+     "identities": [{"platform": "telegram", "platform_user_id": "pqminh"}, {"platform": "telegram", "platform_user_id": "1210670436"}]},
+    {"handle": "huytq", "name": "Huy TQ", "role_rank": 1, "manager": "minhpq", "status": "active",
+     "identities": [{"platform": "telegram", "platform_user_id": "huytq"}, {"platform": "telegram", "platform_user_id": "6837466799"}]}
   ],
   "user_teams": [
+    {"user": "minhpq",  "team": "TEAM-4AE", "role_in_team": "lead"},
+    {"user": "minhnd",  "team": "TEAM-4AE", "role_in_team": "member"},
+    {"user": "giangqd", "team": "TEAM-4AE", "role_in_team": "member"},
+    {"user": "huytq",   "team": "TEAM-4AE", "role_in_team": "member"},
+    {"user": "minhpq",  "team": "TEAM-3AE", "role_in_team": "lead"},
+    {"user": "giangqd", "team": "TEAM-3AE", "role_in_team": "member"},
+    {"user": "huytq",   "team": "TEAM-3AE", "role_in_team": "member"},
     {"user": "linh",  "team": "TEAM-EV", "role_in_team": "lead"},
     {"user": "mai",   "team": "TEAM-ED", "role_in_team": "lead"},
     {"user": "duc",   "team": "TEAM-EV", "role_in_team": "member"},

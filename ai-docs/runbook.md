@@ -169,3 +169,108 @@ domain in the ngrok dashboard to avoid re-setting env + redeploying each
 time); the api-client already sends `ngrok-skip-browser-warning` so browser
 calls bypass ngrok's interstitial page; the tunnel exposes the
 unauthenticated demo API to anyone with the URL — run it only while demoing.
+
+## 8 · Telegram live capture (CAP-4)
+
+Read-only by design (settled #20): the bot only ever **reads** the group. The
+poll loop starts with the api (lifespan) as soon as a bot token is configured;
+`TELEGRAM_POLL_MS=0` disables it. Bots can never see messages sent before they
+joined — history/backfill is replay's job (CAP-2).
+
+### One-time bot setup (in Telegram, human steps)
+
+1. BotFather → `/newbot` → copy the token.
+2. BotFather → `/setprivacy` → **Disable** — *before* the bot joins the group,
+   otherwise it only receives `/slash` commands and nothing else.
+3. Create the demo group and add the bot as a member. Tip: set **Chat history
+   for new members → Visible** right away — this upgrades the group to a
+   supergroup *now*, so its chat id is the stable `-100…` form and never hits
+   the `migrate_to_chat_id` remap case mid-demo.
+
+### Wire it to the stack
+
+1. Token → `infra/.env`:
+
+   ```sh
+   TELEGRAM_BOT_TOKEN=123456:ABC-your-token
+   # TELEGRAM_POLL_MS=2000   # optional; 0 disables the loop
+   ```
+
+   `.env` is injected via compose `env_file`, so a plain `restart` won't pick
+   it up — recreate the container:
+
+   ```sh
+   docker compose -f infra/docker-compose.yml up -d --force-recreate api
+   ```
+
+2. Discover the group's chat id: send any message in the group, then
+
+   ```sh
+   docker compose -f infra/docker-compose.yml logs api | grep "not mapped"
+   # → "telegram chat -100123456789 is not mapped in chat_groups — …"
+   ```
+
+   (Unmapped messages are still captured, with `group_id NULL`.)
+
+3. Fill the placeholders in `data-v2/org.json` (the seed **skips** any value
+   still starting with `FILL_ME`):
+   - `G-LIVE.platform_chat_id` → the chat id from the log line.
+   - each demo member's `identities` entry → their **numeric Telegram user id**
+     (the load-bearing [D5] key — resolution prefers it because usernames are
+     mutable and may differ from what anyone remembers; a username entry is an
+     optional extra). Senders with no identity row become **provisional users**
+     (G44) joined to the group's team; the lead confirms them from the
+     workspace.
+
+4. Re-copy + re-seed (idempotent):
+
+   ```sh
+   docker cp data-v2/org.json infra-api-1:/tmp/org.json
+   docker compose -f infra/docker-compose.yml exec -T api \
+     python -m evermind.org.seed /tmp/org.json
+   ```
+
+   No api restart needed — the poll loop rebuilds the chat-id → group map from
+   the DB every beat.
+
+### Verify the demo beat
+
+Post `!blocked thiếu 20 đèn lồng` in the group. Within ~2 s (`TELEGRAM_POLL_MS`):
+the message lands in `messages`, the marker materializes a blocked task through
+`POST /commands`' gateway path, and it shows in the **Đêm hội Trăng Rằm — Live**
+workspace with the message as its evidence citation. `GET /health/capture` now
+lists the group. Message edits append `message_revisions` (G45) — the citation's
+`rev_at_capture` keeps pointing at the original wording.
+
+Restart safety: the `getUpdates` offset is held in memory; after an api restart
+Telegram re-delivers unacknowledged updates and the connector drops the
+duplicates by `raw_ref`. Nothing is double-captured.
+
+## 9 · LLM extraction (ING) — decisions/tasks from plain chat
+
+Every `EXTRACTION_INTERVAL_SEC` (30, `0` = off) the scheduler cuts a
+window per **live-platform group** (telegram; the seeded replay corpus is
+deliberately excluded from the automatic beat): up to `EXTRACTION_BATCH_SIZE`
+(20) unprocessed messages, but only once the newest one is
+`EXTRACTION_SETTLE_SEC` (120) seconds old — an actively-flowing conversation
+is never cut mid-thought. The window goes to the configured LLM (`AI_BASE_URL` /
+`AI_MODEL` — DeepSeek) with org context (members, open tasks, party aliases);
+extracted candidates enter through the SAME command gateway as everything
+else: confidence < `CONFIDENCE_TAU` (0.8) ⇒ born proposed, and the authority
+gate applies regardless — a member's extracted decision waits for the lead
+exactly like a marker would. `!marker` messages are the deterministic lane's
+property and are skipped.
+
+Demo "extract now" button (don't wait out the interval on stage):
+
+```sh
+curl -X POST -H "X-Persona: minhpq" "http://localhost:8000/ingestion/extract"
+# or one group only:  ...:8000/ingestion/extract?group_id=<chat_groups.id>
+```
+
+Bookkeeping: `extraction_windows` (one row per window: status, attempts,
+token spend), `ingest_cursors` (per-group high-water mark, EPOCH SECONDS of
+the last processed message ts — advances only when a window's outputs
+persist, so an `LLM unavailable` window retries the same messages next beat
+and nothing is ever skipped). Re-extraction after a lost cursor dedups via
+`materializations` — no duplicate decisions.

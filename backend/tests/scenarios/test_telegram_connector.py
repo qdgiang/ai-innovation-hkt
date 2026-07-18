@@ -7,7 +7,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from evermind.connectors.models import GroupMember, Message
+from evermind.connectors.models import GroupMember, Message, MessageRevision
 from evermind.connectors.telegram import TelegramConnector
 
 
@@ -49,6 +49,7 @@ def test_poll_updates_stores_a_message_and_advances_offset(db_session: Session):
     messages = db_session.scalars(select(Message).where(Message.source == "telegram")).all()
     assert len(messages) == 1
     assert messages[0].author_identity == "linh"
+    assert messages[0].author_platform_id == "111"  # [D5] the stable resolution key
     assert messages[0].group_id == 7
     assert messages[0].text == "chào cả nhà"
 
@@ -81,12 +82,14 @@ def test_poll_updates_resolves_reply_to_message(db_session: Session):
 
 
 def test_poll_updates_tracks_membership_join_and_leave(db_session: Session):
+    # user id deliberately > int32: modern telegram ids overflow INTEGER —
+    # regression for the live NumericValueOutOfRange crash (BigInteger column)
     http = FakeHttpClient({
         "ok": True,
         "result": [{
             "update_id": 1, "my_chat_member": {
                 "chat": {"id": -1001}, "date": 1735689600,
-                "new_chat_member": {"user": {"id": 999, "username": "khoa"}, "status": "member"},
+                "new_chat_member": {"user": {"id": 6837466799, "username": "khoa"}, "status": "member"},
             },
         }],
     })
@@ -94,7 +97,7 @@ def test_poll_updates_tracks_membership_join_and_leave(db_session: Session):
                                    chat_group_ids={"-1001": 7})
     connector.poll_updates()
 
-    member = db_session.get(GroupMember, {"group_id": 7, "user_id": 999})
+    member = db_session.get(GroupMember, {"group_id": 7, "user_id": 6837466799})
     assert member is not None
     assert member.left_at is None
 
@@ -103,7 +106,7 @@ def test_poll_updates_tracks_membership_join_and_leave(db_session: Session):
         "result": [{
             "update_id": 2, "my_chat_member": {
                 "chat": {"id": -1001}, "date": 1735689700,
-                "new_chat_member": {"user": {"id": 999, "username": "khoa"}, "status": "left"},
+                "new_chat_member": {"user": {"id": 6837466799, "username": "khoa"}, "status": "left"},
             },
         }],
     })
@@ -112,6 +115,88 @@ def test_poll_updates_tracks_membership_join_and_leave(db_session: Session):
     db_session.flush()  # poll_updates() leaves flush/commit to the caller
     db_session.refresh(member)
     assert member.left_at is not None
+
+
+def test_poll_updates_dedups_redelivery_and_hooks_only_new_messages(db_session: Session):
+    """Restart shape: the in-memory offset is gone, Telegram re-delivers the
+    same update — raw_ref dedup stores it once and the hook fires once."""
+    payload = {
+        "ok": True,
+        "result": [{
+            "update_id": 100,
+            "message": {
+                "message_id": 5, "from": {"id": 111, "username": "linh"},
+                "chat": {"id": -1001, "type": "supergroup"},
+                "date": 1735689600, "text": "!blocked thiếu 20 đèn lồng",
+            },
+        }],
+    }
+    hooked: list[int] = []
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(payload),
+                       chat_group_ids={"-1001": 7}).poll_updates(on_message=hooked.append)
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(payload),
+                       chat_group_ids={"-1001": 7}).poll_updates(on_message=hooked.append)
+
+    messages = db_session.scalars(select(Message).where(Message.source == "telegram")).all()
+    assert len(messages) == 1
+    assert hooked == [messages[0].id]  # flushed id, fired exactly once
+
+
+def test_edited_message_appends_a_revision_never_overwrites(db_session: Session):
+    """G45 via the live path: an edit bumps current_rev and appends a
+    message_revisions row through the service port."""
+    original = {
+        "ok": True,
+        "result": [{
+            "update_id": 1,
+            "message": {
+                "message_id": 9, "from": {"id": 111, "username": "linh"},
+                "chat": {"id": -1001}, "date": 1735689600, "text": "giá 12k",
+            },
+        }],
+    }
+    edit = {
+        "ok": True,
+        "result": [{
+            "update_id": 2,
+            "edited_message": {
+                "message_id": 9, "from": {"id": 111, "username": "linh"},
+                "chat": {"id": -1001}, "date": 1735689600,
+                "edit_date": 1735689700, "text": "giá 16k",
+            },
+        }],
+    }
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(original),
+                       chat_group_ids={"-1001": 7}).poll_updates()
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(edit),
+                       chat_group_ids={"-1001": 7}).poll_updates()
+
+    message = db_session.scalars(
+        select(Message).where(Message.raw_ref == "telegram:-1001:9")
+    ).one()
+    assert message.current_rev == 2
+    assert message.text == "giá 16k"
+    revision = db_session.scalars(
+        select(MessageRevision).where(MessageRevision.message_id == message.id)
+    ).one()
+    assert (revision.rev, revision.text) == (2, "giá 16k")
+
+
+def test_edit_of_a_message_captured_before_the_bot_joined_is_dropped(db_session: Session):
+    edit_only = {
+        "ok": True,
+        "result": [{
+            "update_id": 3,
+            "edited_message": {
+                "message_id": 77, "from": {"id": 111, "username": "linh"},
+                "chat": {"id": -1001}, "date": 1735689600,
+                "edit_date": 1735689700, "text": "sửa tin nhắn cũ",
+            },
+        }],
+    }
+    TelegramConnector(db_session, "fake-token", http=FakeHttpClient(edit_only),
+                       chat_group_ids={"-1001": 7}).poll_updates()
+    assert db_session.scalars(select(Message)).all() == []
 
 
 def test_poll_updates_passes_offset_to_the_next_call(db_session: Session):

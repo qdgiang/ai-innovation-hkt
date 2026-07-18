@@ -9,7 +9,7 @@ import { api } from "@/lib/api-client";
 import { personaFromDocument, setPersonaCookie } from "@/lib/persona-client";
 import type { CaptureGroupHealth, InboxItem } from "@/lib/types";
 import {
-  WsBundle, WsProject, avatarClass, decisionLabel, fullDate, initials,
+  ORG_TZ, WsBundle, WsProject, avatarClass, decisionLabel, fullDate, initials,
   roleLabel,
 } from "@/lib/workspace";
 import { Icon } from "./icons";
@@ -264,7 +264,7 @@ export function WorkspaceApp({
                             : item.kind === "confirm" ? `Xác nhận cập nhật task #${item.ref_id}`
                               : `${item.kind} #${item.ref_id}`}
                         </strong>
-                        <small>{new Date(item.created_at).toLocaleString("vi-VN")}</small>
+                        <small>{new Date(item.created_at).toLocaleString("vi-VN", { timeZone: ORG_TZ })}</small>
                       </span>
                     </button>
                   ))}

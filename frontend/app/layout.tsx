@@ -11,9 +11,12 @@ export const metadata: Metadata = {
 // frontend_ref design; legacy routes (/feed, /digest, /upload, …) are kept
 // routable but are no longer part of the navigation.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // suppressHydrationWarning is attribute-scoped (not deep): browser
+  // extensions (CocCoc, Grammarly, password managers) stamp attributes onto
+  // <html>/<body> before React hydrates, which is noise, not a bug of ours.
   return (
-    <html lang="vi">
-      <body>{children}</body>
+    <html lang="vi" suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

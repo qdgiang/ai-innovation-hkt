@@ -61,6 +61,10 @@ def load_org_seed(session: Session, path: str | Path) -> dict[str, dict[str, int
 
     group_ids: dict[str, int] = {}
     for row in data.get("chat_groups", []):
+        if str(row.get("platform_chat_id", "")).startswith("FILL_ME"):
+            # runbook placeholder (live telegram group) — seeding it would leave
+            # an orphan group row behind once the real chat id replaces it
+            continue
         group = session.scalar(
             select(ChatGroup).where(
                 ChatGroup.platform == row["platform"],
@@ -98,24 +102,36 @@ def load_org_seed(session: Session, path: str | Path) -> dict[str, dict[str, int
             if user is not None:
                 user.manager_id = user_ids[row["manager"]]
 
-    # platform identities [D5]
+    # platform identities [D5]. Two seed shapes:
+    # - legacy `platform_user_id` (one key, platform inferred from the first
+    #   chat_group — the original single-platform assumption, kept for compat)
+    # - explicit `identities: [{platform, platform_user_id[, connector_scope]}]`
+    #   so one user can exist on several platforms at once (seeded corpus on
+    #   generic-chat + live telegram capture). "FILL_ME"/empty values are
+    #   skipped: unfilled runbook placeholders must not become real keys.
+    default_platform = data.get("chat_groups", [{}])[0].get("platform", "generic-chat")
     for row in data.get("users", []):
-        if not row.get("platform_user_id"):
-            continue
-        platform = data.get("chat_groups", [{}])[0].get("platform", "generic-chat")
-        exists = session.scalar(
-            select(UserIdentity).where(
-                UserIdentity.platform == platform,
-                UserIdentity.connector_scope == CONNECTOR_SCOPE,
-                UserIdentity.platform_user_id == row["platform_user_id"],
+        identities = list(row.get("identities", []))
+        if row.get("platform_user_id"):
+            identities.append({"platform": default_platform,
+                               "platform_user_id": row["platform_user_id"]})
+        for identity in identities:
+            key = identity.get("platform_user_id", "")
+            if not key or key.startswith("FILL_ME"):
+                continue
+            scope = identity.get("connector_scope", CONNECTOR_SCOPE)
+            exists = session.scalar(
+                select(UserIdentity).where(
+                    UserIdentity.platform == identity["platform"],
+                    UserIdentity.connector_scope == scope,
+                    UserIdentity.platform_user_id == key,
+                )
             )
-        )
-        if exists is None:
-            session.add(UserIdentity(
-                user_id=user_ids[row["handle"]], platform=platform,
-                connector_scope=CONNECTOR_SCOPE,
-                platform_user_id=row["platform_user_id"],
-            ))
+            if exists is None:
+                session.add(UserIdentity(
+                    user_id=user_ids[row["handle"]], platform=identity["platform"],
+                    connector_scope=scope, platform_user_id=key,
+                ))
 
     for row in data.get("user_teams", []):
         user_id = user_ids[row["user"]]

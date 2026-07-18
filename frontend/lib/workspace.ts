@@ -131,15 +131,23 @@ export function roleLabel(m: WsMember, teams: { id: number; name: string }[]): s
   return m.status === "provisional" ? "Provisional member" : "Member";
 }
 
+// Display timezone is the ORG's (backend ORG_TIMEZONE contract), never the
+// machine's: the workspace bundle is SSR-ed with data, so an unpinned zone
+// renders one date on the server (UTC container) and another in the browser
+// (+07:00) — a guaranteed React hydration mismatch on top of being wrong.
+export const ORG_TZ = "Asia/Ho_Chi_Minh";
+
 export function shortDate(ts: string | null | undefined): string {
   if (!ts) return "—";
-  return new Date(ts).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  return new Date(ts).toLocaleDateString("vi-VN", {
+    day: "2-digit", month: "2-digit", timeZone: ORG_TZ,
+  });
 }
 
 export function fullDate(ts: string | null | undefined): string {
   if (!ts) return "—";
   return new Date(ts).toLocaleDateString("vi-VN", {
-    day: "2-digit", month: "2-digit", year: "numeric",
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: ORG_TZ,
   });
 }
 
