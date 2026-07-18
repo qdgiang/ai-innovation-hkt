@@ -21,3 +21,16 @@ rewrite present truth with older history, while equal timestamps make replay non
 - Equal event timestamps replay deterministically.
 - An explicit supersession with impossible chronology goes to triage.
 - Views expose event and recorded timestamps when they differ.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — FIX-lite; Option B adopted (rev-14 absorption queue).** Rev 13 already has the
+spine: fold by event `ts`, `recorded_at` stored, late-older history born `superseded` without
+disturbing the present (G31), dual stamps in views. Adopted additions: (a) the deterministic
+tiebreak chain `event_ts → recorded_at → stable_event_id` so equal timestamps replay
+identically every time — cheap and essential for the replay demo's credibility; (b) an
+explicit supersession whose chronology is impossible (claims to supersede something newer than
+itself) goes to **triage**, never into the fold. Option C (full bi-temporal) stays exactly
+where it already is: §Deferred, until real query needs prove the current model insufficient.

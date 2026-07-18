@@ -89,3 +89,26 @@ but makes forgotten proposals likely and weakens the early-warning promise.
 - Define what user activity resets a reminder clock.
 - Decide whether `stale` is a status or a derived badge on `pending`.
 - Decide how long unresolved `UNLINKED` proposals stay in triage.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — decided by settled #18/#20 plus one FIX.** The liveness questions were answered
+by directives after this file was written; recording the outcomes: **Escalation = Option C
+enhanced** — no automatic escalation chain and no activity-clock state machine (Option B's
+`last_activity_at` machinery rejected for MVP); the standing policy is one approver nudge at
+48h, the aged pending queue in every digest, and bulk dismiss-stale. Silence never approves,
+rejects, or expires (settled #18); "đang xem" resets nothing because there is nothing to
+reset. **Receipt invariant → ADOPTED, dashboard-side (rev-14 queue):** when a window commits,
+the proposer's feed shows a capture receipt — target or `UNLINKED`, current/proposed values,
+required approver, and "the projection has not changed." No chat receipt exists (settled #20);
+the honest residual is ACCEPTED: a member who never opens the dashboard cannot distinguish
+missed-capture from pending — that is #20's recorded trade, mitigated by the deterministic
+fallback. **Missed capture = markers**: `!decision` from a non-authorized member already files
+a proposal deterministically; a `!propose` alias is an optional nicety, not a new lane. The
+per-item decisions: `stale` is a derived badge on `pending`, never a status; `UNLINKED` triage
+items wait for human action indefinitely (no clock), listed in needs-attention. The
+cross-cutting rules all hold in rev 13 today: G52 revalidation before any late apply, G49
+dedup/merge, backlog notices, delegation-or-chain-only acting authority, and the returning
+approver's challenge lane.

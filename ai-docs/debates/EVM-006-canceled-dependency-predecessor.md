@@ -21,3 +21,17 @@ usually means the expected output will never arrive, not that the dependency was
 - Completing the last required predecessor may emit a confirm-resumption ping.
 - Merge redirects dependency identity; it does not satisfy the dependency by itself.
 - Multiple predecessors use AND semantics unless the model explicitly changes later.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — FIX; Option B adopted in full (rev-14 absorption queue).** Correct catch: rev 13
+defines unblock-on-done and close-out edge-killing, but a mid-flight `canceled` predecessor was
+undefined. Adopted semantics: only `done` satisfies an edge; canceling a predecessor flips its
+outgoing edges to `needs-rewire` (the vocabulary G59 transfers already use) and flags the
+dependent's PIC + lead — never an "unblocked" signal; `merged` redirects edge identity to the
+survivor (G60) without satisfying anything; a lead removes an edge explicitly via the existing
+`dependency remove` op when the output is genuinely no longer needed. AND semantics across
+multiple predecessors confirmed as the standing rule. All four acceptance criteria adopted
+as-is.

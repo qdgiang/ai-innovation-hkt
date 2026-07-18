@@ -103,3 +103,21 @@ using the same review and approval rules.
 - Visibility targets: organization-wide only or selected projects/teams as well.
 - Retention and revocation behavior for answers already generated from a publication.
 - Which party fields are global identity versus project-scoped relationship knowledge.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — Option B adopted as the production direction; the MVP slice is the
+retrospective.** The S22-vs-D8 "source conflict" dissolves once sequenced: the demo has no
+read ACLs at all (settled #3 — one org, persona switcher), so S22's archive reach-back works
+today with zero publication machinery, and nothing leaks that the whole org couldn't already
+see. The **retrospective digest (G41) is the v0 publication bundle**: generated at close-out,
+archived, quotable by Q&A — shipped / didn't ship / decisions with rationale and supersession
+context / next-time policies / final counters, which is most of the candidate bundle list
+already. The curated flow (owner reviews item-by-item, coordinator approves, `org_published`
+visibility scope, revocation-without-history-loss, program projects' manual publish) activates
+together with D8 ACLs on the roadmap — this file's invariants, edge cases, and acceptance
+scenarios are pre-approved as that feature's spec. Option A remains a legitimate explicit
+org-policy toggle (it is effectively what the demo runs); Option C stays the fallback for
+never-published material.

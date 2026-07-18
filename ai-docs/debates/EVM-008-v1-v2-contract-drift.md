@@ -21,3 +21,18 @@ v1 records and read v1 fixtures. Passing v1 tests would not validate the EverMin
 - V2 tests read `data-v2`, never `data/` by accident.
 - Fixture integrity, deterministic domain scenarios, and extraction evaluation are separate.
 - Core tests do not require live Telegram or Discord.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — CONFIRMED; Option B is the standing Phase-1 work order.** This is not a debate —
+it is the agreed next build step, already declared in the design header ("`ai/schemas.py` is
+stale until rebuilt from this file"). Phase 1 = rebuild contracts from rev 13 (entities, ops,
+lifecycle transactions), stand up the extraction spine, and gate on `make eval` against
+`data-v2/answer_key.json`. Adopted additions from this issue: the contract matrix
+(spec → schema → SQL → fixture → API → test) is the tracking artifact for that rebuild; v2
+tests are physically pointed at `data-v2/` with a guard that fails if anything imports the v1
+`data/` fixtures; fixture-integrity, domain-scenario, and extraction-eval layers stay separate
+(= D7); core tests run platform-free behind the chat contract. No design change required —
+execution item.

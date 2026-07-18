@@ -21,3 +21,18 @@ The outbound registry alone does not close the transaction boundary.
 - Retrying after uncertain delivery does not create duplicate logical announcements.
 - The outbound registry receives the platform message ID only after successful send.
 - Persistent delivery failure is visible without reverting already-effective domain truth.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — MOOT; superseded by settled #20.** This issue's premise — the bot announces
+domain changes into chat — no longer exists: the bot never posts to groups, and the outbound
+registry is retired. All notification surfaces are dashboard projections (feed entries, inbox
+items) derived from domain events inside the same database — transactionally consistent by
+construction, no distributed send boundary, nothing to lose or duplicate. What survives:
+(a) the honesty criterion lives on as the existing backlog-notice rule — degraded state is
+always disclosed, never silent; (b) **Option B is pre-approved as the pattern** if outbound
+chat delivery ever returns on the roadmap (e-mail/webhook connectors included) — persist event
++ outbox atomically, idempotency key per logical notification, register the platform message
+id only after confirmed send. Parked, not needed for the build.

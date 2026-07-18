@@ -22,3 +22,19 @@ different retention needs.
 - Delete/redaction events are auditable and authorization-checked.
 - A surviving decision shows `source unavailable/redacted` rather than fabricating a receipt.
 - Cached-copy access follows explicit scope and retention policy.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — SPLIT: citation states FIX-lite now; retention policy ROADMAP.** Rev 13 already
+holds the mechanics: revisions append-only, deletes tombstone (record kept, text redactable
+per consent posture), cached copies labeled when a source link dies, receipts never fabricated.
+Adopted now (rev-14 queue): the explicit citation-state vocabulary — `live` ·
+`edited-after-capture` (G45 badge) · `source-deleted` · `redacted` — rendered on every receipt,
+so a surviving decision says plainly what its evidence's condition is. Redaction is an
+authorized act (coordinator-level config op, logged). Deferred to roadmap: configurable
+retention windows per class (raw source vs revisions vs confirmed records vs audit metadata)
+and consent-policy tooling — org-governance work, not 48h work; the demo posture stays what
+was settled long ago: bot presence = visible capture, published schema. Option C rejected
+outright — source deletion never deletes derived institutional memory.

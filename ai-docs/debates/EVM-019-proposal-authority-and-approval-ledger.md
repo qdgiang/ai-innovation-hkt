@@ -96,3 +96,27 @@ not erase authorship of the idea; authorship does not imply authority.
 - How acting leads/coordinators are configured and time-bounded.
 - Whether a material amendment keeps the proposal ID or creates a linked successor after review
   has started.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — Option B confirmed (it is rev 13's model); matrix adopted with two changes; the
+open decisions decided.** Bounded autonomy = the existing facet registry + update lanes: PIC
+notes/evidence/progress/done apply immediately; material facets route as proposals to the
+required authority; no AI materiality guess. Matrix deltas: (1) **PIC handoff two-key →
+REJECTED for MVP** (see D10 in the SPEC file) — assignment stays a plain authority op;
+incoming consent is social, and the overload warning is the pushback lane; two-key stays
+special-cased where it already exists (cross-project transfer, G59). (2)
+`completion_requires_approval` → **roadmap only**; default PIC-done stands. The MVP approval
+ledger is the rev-13 act-evidence layer — `decisions` (snapshot) + `decision_citations`
+(kind=approval, `rev_at_act`) + `reaction_acts` + `approved_by`/`approval_via` — which already
+renders "Minh proposed · Mai approved". `approval_requirement` combinations for MVP: `any`
+(rank-sufficient), plus the two hard-coded multi-party cases (two-key transfer, all-leads
+project policy); a generalized requirement/reducer table is §Deferred (multi-step approval
+chains). Amendment identity (open decision 4): settled #2 answers it — bodies are immutable;
+within the grace window an edit amends, after it a proposer's new value is a **linked
+successor** that withdraws the old (settled #17b), and prior approvals never carry across
+content changes (G65 binds approval to the seen revision). Acting-authority configuration →
+roadmap; MVP uses the coordinator apex + rootless fallback. Receipts/announcement steps in
+the core flow read dashboard-side under settled #20.

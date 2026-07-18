@@ -21,3 +21,17 @@ contradictory exceptions on the same facet and overlapping dates.
 - Non-overlapping and compatible exceptions remain valid.
 - Q&A returns one unambiguous effective value for an `as_of` time.
 - An explicit replacement preserves the replaced exception in history.
+
+---
+
+## Resolution — 2026-07-18 (reviewed against design-v2 rev 13)
+
+**RESOLVED — FIX; Option B adopted (rev-14 absorption queue).** Real edge G42 left open:
+one-effective-per-unit never constrained *windowed* decisions against each other. Rule: at
+effective-write time, a windowed decision whose `effect_window` overlaps an existing effective
+exception on the same unit is **held `proposed`** with both windows shown — the proposer
+adjusts dates or explicitly replaces (replacement supersedes the old exception through the
+normal machinery, history intact). Non-overlapping exceptions coexist freely; `as_of`
+resolution stays deterministic: standing decision, shadowed by at most one exception at any
+instant. Interval-splitting (Option C) rejected — synthetic decisions would break
+receipts-per-utterance. Consistent with settled #18: the hold waits for a human act, no clock.
