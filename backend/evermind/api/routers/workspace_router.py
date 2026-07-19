@@ -22,6 +22,7 @@ from evermind.org.service import OrgService
 from evermind.tasks.models import (
     Task, TaskAssignment, TaskDecisionLog, TaskDependency, TaskTeam, TaskUpdate,
 )
+from evermind.signals.service import SignalsService
 
 router = APIRouter(tags=["workspace"])
 
@@ -234,6 +235,9 @@ def workspace(project_id: int, session: Session = Depends(get_session),
     ]
 
     blocked = [t for t in tasks if t.status == TaskStatus.BLOCKED]
+    radar_lamps = SignalsService(session).radar_sweep(project_id=project_id)
+    parties = {t.blocked_waiting_on_party_id: org.get_party(t.blocked_waiting_on_party_id)
+               for t in blocked if t.blocked_waiting_on_party_id is not None}
     return {
         "project": {"id": project.id, "name": project.name,
                     "kind": project.kind.value, "status": project.status.value,
@@ -243,6 +247,15 @@ def workspace(project_id: int, session: Session = Depends(get_session),
         "tasks": serialized_tasks,
         "decisions": serialized_decisions,
         "evidence": evidence,
+        "radar": {
+            "confirmed_blockers": [{"task_id": t.id, "description": t.description,
+                                    "since": t.blocked_since,
+                                    "waiting_on": {"party_id": t.blocked_waiting_on_party_id,
+                                                   "name": parties[t.blocked_waiting_on_party_id].name if t.blocked_waiting_on_party_id in parties and parties[t.blocked_waiting_on_party_id] else None,
+                                                   "text": t.blocked_waiting_on_text}}
+                                   for t in blocked],
+            "lamps": [entry for entry in radar_lamps if entry["lamp"] != "blocked"],
+        },
         "counts": {
             "tasks": len(tasks),
             "active_tasks": sum(1 for t in tasks if t.status in ACTIVE_TASK_STATUSES),

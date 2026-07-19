@@ -170,3 +170,51 @@ def test_settle_guard_never_cuts_an_active_conversation(db_session, org_ids):
     assert gateway.calls == []  # no LLM spend on a still-flowing chat
     assert db_session.get(IngestCursor, group_id) is None
     assert db_session.scalars(select(ExtractionWindow)).all() == []
+
+
+def test_window_emits_weak_signals_to_ledger(db_session, org_ids):
+    """SIG-1 producer half: extraction drafts weak signals -> RecordSignal
+    through the gateway -> signal_recorded event -> ledger row, with the party
+    resolved via org aliases (SIG-2) and the author identity attached."""
+    from evermind.ingestion.extraction import ExtractedSignal
+    from evermind.signals.consumer import SignalsConsumer
+    from evermind.signals.models import Signal
+
+    group_id = org_ids["groups"]["G-TT"]
+    _msg(db_session, group_id, 9301, "duc",
+         "bên Kim Long vẫn chưa báo giá backdrop", minutes_ago=30)
+    gateway = FakeGateway(result=ExtractionResult(candidates=[], signals=[
+        ExtractedSignal(kind="blocker", topic="Kim Long chưa báo giá",
+                        excerpt="vẫn chưa báo giá", message_id=9301,
+                        party="Kim Long"),
+    ]))
+
+    outcome = IngestionService(db_session).run_window(group_id, gateway=gateway)
+
+    assert outcome["status"] == "done"
+    assert outcome["signals"][0]["status"] == "signal_recorded"
+    assert outcome["signals"][0]["party_id"] == org_ids["parties"]["PTY-KL"]
+
+    SignalsConsumer(db_session).poll_and_apply()
+    signal = db_session.scalar(select(Signal))
+    assert signal is not None
+    assert signal.normalized_topic == "kim long chưa báo giá"
+    assert signal.party_id == org_ids["parties"]["PTY-KL"]
+    assert signal.reported_by_user_id == org_ids["users"]["duc"]
+    assert signal.message_id == 9301
+
+
+def test_hallucinated_signal_message_id_is_dropped(db_session, org_ids):
+    from evermind.ingestion.extraction import ExtractedSignal
+    from evermind.signals.models import Signal
+
+    group_id = org_ids["groups"]["G-TT"]
+    _msg(db_session, group_id, 9401, "duc", "cập nhật tiến độ nhẹ", minutes_ago=30)
+    gateway = FakeGateway(result=ExtractionResult(candidates=[], signals=[
+        ExtractedSignal(kind="blocker", topic="ma", excerpt="x", message_id=4242),
+    ]))
+
+    outcome = IngestionService(db_session).run_window(group_id, gateway=gateway)
+
+    assert outcome["signals"][0]["status"] == "hallucinated_message_id"
+    assert db_session.scalar(select(Signal)) is None

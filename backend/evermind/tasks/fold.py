@@ -19,9 +19,11 @@ A ships differs:
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from evermind.contracts.enums import TaskStatus
 from evermind.tasks import dependencies
 from evermind.tasks.models import Task, TaskAssignment, TaskTeam
 
@@ -83,6 +85,31 @@ def apply_op(session: Session, *, decision_id: int, op: dict) -> None:
         else:
             task.end_date = value
             task.end_date_defaulted = False
+        return
+
+    if facet == "status":
+        # `status` accepts either a plain value or the blocked-context dict
+        # {"status": "blocked", "waiting_on_party_id"?, "waiting_on_text"?,
+        # "since"?} — the write path the blocker board's counterparty grouping
+        # needs (promotion submits this shape). Leaving the blocked state
+        # clears the waiting-on context: it belongs to the blockage, not the task.
+        task_id = _task_id_from_target(target)
+        task = _get_or_create_task(session, task_id)
+        if verb != "set":
+            raise ValueError(f"facet 'status' only supports 'set', got {verb!r}")
+        if isinstance(value, dict):
+            task.status = TaskStatus(value["status"])
+            task.blocked_waiting_on_party_id = value.get("waiting_on_party_id")
+            task.blocked_waiting_on_text = value.get("waiting_on_text")
+            since = value.get("since")
+            task.blocked_since = (datetime.fromisoformat(since)
+                                  if isinstance(since, str) else since)
+        else:
+            task.status = TaskStatus(value)
+        if task.status != TaskStatus.BLOCKED:
+            task.blocked_waiting_on_party_id = None
+            task.blocked_waiting_on_text = None
+            task.blocked_since = None
         return
 
     if facet in TASK_FIELD_FACETS:

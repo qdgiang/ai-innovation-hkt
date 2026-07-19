@@ -57,9 +57,26 @@ def build_scheduler(session_factory) -> BackgroundScheduler:
             IngestionService(session).run_pending_windows()
             session.commit()
 
+    def promotion_job() -> None:
+        """SIG-1 promotion beat: evaluate every open ledger identity
+        (≥2 corroborating mentions, or 1 + staleness) — promoted blockers
+        surface on the board, task-linked ones become a PROPOSED blocked-state
+        decision through the gateway (a human still confirms; settled #18's
+        clocks-only-create-visibility stays true for decisions)."""
+        from evermind.decisions.service import DecisionsService
+        from evermind.signals.service import SignalsService
+        from evermind.tasks.service import TasksService
+        with session_factory() as session:
+            gateway = DecisionsService(session, task_port=TasksService(session))
+            SignalsService(session).promotion_sweep(decisions_service=gateway)
+            session.commit()
+
     scheduler.add_job(radar_job, CronTrigger(hour=6))
     scheduler.add_job(capture_self_check_job, CronTrigger(hour="*"))
     if settings.extraction_interval_sec > 0:
         scheduler.add_job(extraction_job,
                           IntervalTrigger(seconds=settings.extraction_interval_sec))
+    if settings.promotion_sweep_sec > 0:
+        scheduler.add_job(promotion_job,
+                          IntervalTrigger(seconds=settings.promotion_sweep_sec))
     return scheduler

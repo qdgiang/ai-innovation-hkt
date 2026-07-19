@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from evermind.contracts.enums import SignalKind, SignalStatus
@@ -30,3 +31,11 @@ class Signal(Base):
     ts: Mapped[datetime]
     window_id: Mapped[int]
     status: Mapped[SignalStatus] = mapped_column(default=SignalStatus.OPEN)
+    # who voiced the mention (resolved identity) — promotion's proposed
+    # blocked-state decision carries the FIRST reporter's provenance.
+    reported_by_user_id: Mapped[int | None]
+    # G22: free-text counterparty when no `parties` row matched.
+    waiting_on_text: Mapped[str | None]
+    # per-mention evidence with revision provenance [G45/G65]:
+    # [{"message_id": int, "rev_at_capture": int}] (PR #53 shape)
+    evidence: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)

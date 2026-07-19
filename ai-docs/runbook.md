@@ -70,23 +70,22 @@ both groups (`GET /health/capture` shows both alive).
 ## 3 · What works today vs. not yet
 
 Writes go through `POST /commands` (the D3 gateway — propose/approve/reject,
-task updates, signals). **Known P4-glue gaps** (tracked in the PR #42/#44 reviews):
+task updates, signals). The read side runs itself: the in-app consumer loop
+(`CONSUMER_POLL_MS`, default 2s) folds `domain_events` into tasks + signals +
+surfacing, and APScheduler runs the radar sweep, capture self-check, LLM
+extraction beat (`EXTRACTION_INTERVAL_SEC`), and the SIG-1 **promotion beat**
+(`PROMOTION_SWEEP_SEC`, default 60s).
 
-- The projection-consumer loop is **not wired into the app** — a command appends
-  `domain_events`, but the board only updates after the consumer folds them. To
-  fold manually:
+The weak-signal pipeline (the signature feature) is live end to end: extraction
+drafts weak signals alongside decisions → `RecordSignal` through the gateway →
+ledger → promotion (≥2 corroborating mentions, or 1 + staleness) → mentions
+flip to `promoted` (they are the board card, citations = every mention) → a
+task-linked promotion also submits a **PROPOSED** blocked-state decision in the
+first mention author's name — a human confirms it, then the fold writes the
+blocked status + counterparty context the `/blockers` board groups by.
 
-  ```sh
-  docker compose -f infra/docker-compose.yml exec -T api python -c \
-    "from evermind.db.session import SessionLocal; from evermind.tasks.consumer import TasksConsumer
-  s = SessionLocal(); print(TasksConsumer(s).poll_and_apply(), 'events folded'); s.commit()"
-  ```
-
-- The scheduler (radar sweep, capture self-check) is defined but not started.
-- The FE persona switcher isn't wired to `/personas` yet — dashboard pages render
-  live read data but not per-persona feeds.
-- No extraction yet (ING is Lane A's P2) — replayed chat doesn't become
-  decisions/tasks on its own; decisions enter via `POST /commands`.
+Still open: asks/parked digest aging (G35), dependency-derived lamps (G16),
+reaction capture (interface #8), FE persona-switcher polish.
 
 ## 4 · Tests & linters (inside the container)
 

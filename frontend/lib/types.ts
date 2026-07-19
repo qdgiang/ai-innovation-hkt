@@ -130,10 +130,27 @@ export interface InboxItem {
   resolution?: string | null;
 }
 
-// GET /blockers?by=party — grouped by resolved party id or free text.
+// GET /blockers?by=party — grouped by counterparty NAME (or free text);
+// each group carries asserted-blocked TASKS and PROMOTED weak SIGNALS (SIG-1:
+// mentioned ≥2 times or 1 + staleness — mentions are the citations, G27).
+export interface BlockedTaskCard {
+  task_id: number;
+  description: string;
+  since: string | null;
+}
+export interface PromotedSignalCard {
+  topic: string;
+  kind: "blocker" | "dependency";
+  project_id: number;
+  task_id: number | null;
+  since: string;
+  mentions: number;
+  citation_message_ids: number[];
+  excerpt: string;
+}
 export type BlockersBoard = Record<
   string,
-  { task_id: number; description: string; since: string | null }[]
+  { tasks: BlockedTaskCard[]; signals: PromotedSignalCard[] }
 >;
 
 // GET /digest/{team} (SurfacingService.digest_for's dict).

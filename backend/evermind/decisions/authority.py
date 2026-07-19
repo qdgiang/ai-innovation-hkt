@@ -56,6 +56,11 @@ class AuthorityService:
             return True
         return self.org.is_ancestor(actor_id, lead)
 
+    def team_approvers(self, team_id: int) -> list[int]:
+        """Public read for callers routing reviews to a team (lead + coordinator)
+        — e.g. signal-promotion approvals (harvest of PR #53)."""
+        return self._team_approvers(team_id)
+
     def _team_approvers(self, team_id: int) -> list[int]:
         approvers: list[int] = []
         lead = self.org.lead_of_team(team_id)

@@ -79,6 +79,10 @@ export interface WsBundle {
   tasks: WsTask[];
   decisions: Decision[];
   evidence: WsEvidence[];
+  radar: {
+    confirmed_blockers: { task_id: number; description: string; since: string | null; waiting_on: { party_id: number | null; name: string | null; text: string | null } }[];
+    lamps: { task_id: number; lamp: "overdue" | "stale" | "idle" | "late-start" | "contested" }[];
+  };
   counts: {
     tasks: number;
     active_tasks: number;

@@ -35,13 +35,16 @@ logger = logging.getLogger(__name__)
 
 def _run_consumers_once() -> int:
     """One D3 read-side beat: fold pending `domain_events` into the tasks +
-    surfacing projections. Also invoked by CLIs (demo seed) between commands."""
+    signals + surfacing projections. Also invoked by CLIs (demo seed) between
+    commands."""
     from evermind.db.session import SessionLocal
+    from evermind.signals.consumer import SignalsConsumer
     from evermind.surfacing.consumer import SurfacingConsumer
     from evermind.tasks.consumer import TasksConsumer
 
     with SessionLocal() as session:
         folded = TasksConsumer(session).poll_and_apply()
+        folded += SignalsConsumer(session).poll_and_apply()
         folded += SurfacingConsumer(session).poll_and_apply()
         session.commit()
     return folded

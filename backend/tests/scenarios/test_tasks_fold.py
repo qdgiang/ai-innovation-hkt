@@ -329,3 +329,32 @@ def test_decision_rejected_excludes_it_from_future_replay(db_session: Session):
     TasksConsumer(db_session).poll_and_apply()
 
     assert TasksService(db_session).at(1, T0 + timedelta(hours=3))["status"] == "todo"
+
+
+def test_status_dict_sets_and_clears_blocked_context(db_session: Session):
+    """The blocked-context write path (signals-promotion pipeline): a `status`
+    op may carry {"status": "blocked", waiting_on..., since} — and leaving the
+    blocked state clears the context (it belongs to the blockage)."""
+    _decision_effective(db_session, ts=T0, decision_id=61, ops=[
+        {"target": "task:71", "facet": "description", "op": "set", "value": "In backdrop"},
+    ])
+    _decision_effective(db_session, ts=T0 + timedelta(hours=1), decision_id=62, ops=[
+        {"target": "task:71", "facet": "status", "op": "set",
+         "value": {"status": "blocked", "waiting_on_party_id": 5,
+                   "waiting_on_text": None, "since": T0.isoformat()}},
+    ])
+    TasksConsumer(db_session).poll_and_apply()
+    task = db_session.get(Task, 71)
+    assert task.status == "blocked"
+    assert task.blocked_waiting_on_party_id == 5
+    assert task.blocked_since is not None
+
+    _decision_effective(db_session, ts=T0 + timedelta(hours=2), decision_id=63, ops=[
+        {"target": "task:71", "facet": "status", "op": "set", "value": "doing"},
+    ])
+    TasksConsumer(db_session).poll_and_apply()
+    task = db_session.get(Task, 71)
+    assert task.status == "doing"
+    assert task.blocked_waiting_on_party_id is None
+    assert task.blocked_waiting_on_text is None
+    assert task.blocked_since is None

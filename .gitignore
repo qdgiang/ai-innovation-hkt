@@ -21,3 +21,6 @@ dist/
 
 # personal scratch notes
 huytr/
+
+# build artifacts
+frontend/tsconfig.tsbuildinfo

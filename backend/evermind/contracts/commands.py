@@ -84,6 +84,13 @@ class ProposeDecision(CommandEnvelope):
     delegated_by_user_id: int | None = None
     delegation_message_id: int | None = None
     context_group_id: int | None = None
+    # system-initiated proposals (harvested from PR #53, credit pqminh27):
+    # `force_proposed` holds the decision as PROPOSED regardless of authority/
+    # confidence; `review_reason` says WHY on the inbox card; `reported_by`
+    # keeps the human whose evidence triggered it (promotion: first mention).
+    force_proposed: bool = False
+    review_reason: Literal["signal_promotion"] | None = None
+    reported_by_user_id: int | None = None
 
 
 class ApproveProposal(CommandEnvelope):
@@ -136,6 +143,14 @@ class RecordSignal(CommandEnvelope):
     party_id: int | None = None
     normalized_topic: str
     excerpt: str
+    # contract additions (signals-promotion pipeline; evidence/waiting shapes
+    # harvested from PR #53, credit pqminh27): who voiced the mention (promotion
+    # proposes in the FIRST reporter's name), per-mention evidence with revision
+    # provenance (G45/G65 — no more rev_at_capture=1 hardcode), and the G22
+    # free-text counterparty when no party matches.
+    reported_by_user_id: int | None = None
+    evidence: list[CitationSpec] = Field(default_factory=list)
+    waiting_on_text: str | None = None
 
 
 class AppendCorroboration(CommandEnvelope):

@@ -52,6 +52,11 @@ class Decision(Base):
     # under the 0-placeholder project (PR #42 review gap).
     new_task_id: Mapped[int | None]
     context_project_id: Mapped[int | None]
+    # system-initiated proposal provenance (harvest of PR #53): WHY the
+    # decision is held for review + WHOSE evidence triggered it. The router
+    # masks the mechanical actor for signal promotions and shows the reporter.
+    review_reason: Mapped[str | None]
+    reported_by_user_id: Mapped[int | None]
 
     # Append-only enforcement (settled #2): a DB trigger rejects UPDATEs on body
     # columns (ts, decided_by_*, scope*, description, context, ops, effect_window,

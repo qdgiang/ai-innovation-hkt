@@ -83,7 +83,19 @@ class TasksConsumer:
                 task_id=task_id, decision_id=decision_id, ts=event.ts,
                 recorded_at=event.ts, stable_event_id=event.caused_by_command, ops=ops,
             ))
-            if task.status == TaskStatus.CANCELED:
+            # blocked_since bookkeeping for PLAIN "blocked" status ops (the
+            # dict shape sets its own `since` inside the fold) — PR #53 hunk,
+            # made dict-aware so it never wipes fold-written context.
+            task = self.session.get(Task, task_id)
+            status_ops = [op for op in ops
+                          if op.get("target") == f"task:{task_id}"
+                          and op.get("facet") == "status"]
+            if task is not None and status_ops:
+                raw = status_ops[-1].get("value")
+                status_value = raw.get("status") if isinstance(raw, dict) else raw
+                if status_value == "blocked" and task.blocked_since is None:
+                    task.blocked_since = event.ts
+            if task is not None and task.status == TaskStatus.CANCELED:
                 dependencies.on_predecessor_status_changed(self.session, predecessor_id=task_id)
 
     def _on_decision_rejected(self, event: DomainEvent) -> None:

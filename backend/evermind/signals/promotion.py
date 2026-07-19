@@ -6,7 +6,7 @@ modules it eventually has to call that don't exist yet (org, decisions).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from evermind.contracts.enums import SignalKind
 from evermind.signals.models import Signal
@@ -44,8 +44,14 @@ def evaluate(signals: list[Signal], *, now: datetime,
     if not signals:
         return None
 
+    first_ts = signals[0].ts
+    # SQLite's test driver drops tzinfo despite the TIMESTAMPTZ model contract.
+    if first_ts.tzinfo is None:
+        first_ts = first_ts.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
     corroborated = len(signals) >= MIN_CORROBORATING
-    stale = len(signals) == 1 and (now - signals[0].ts) >= timedelta(days=staleness_days)
+    stale = len(signals) == 1 and (now - first_ts) >= timedelta(days=staleness_days)
     if not (corroborated or stale):
         return None
 
@@ -56,6 +62,6 @@ def evaluate(signals: list[Signal], *, now: datetime,
         task_id=first.task_id,
         party_id=first.party_id,
         normalized_topic=first.normalized_topic,
-        since=first.ts,
+        since=first_ts,
         citation_message_ids=[s.message_id for s in signals],
     )

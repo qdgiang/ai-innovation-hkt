@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     extraction_settle_sec: int = 120
     confidence_tau: float = 0.8
     org_timezone: str = "Asia/Ho_Chi_Minh"
+    # SIG-1 promotion beat in SECONDS (0 disables): evaluates open ledger
+    # identities (≥2 corroborating mentions, or 1 + staleness).
+    promotion_sweep_sec: int = 60
 
     telegram_bot_token: str = ""
     # CAP-4 live capture beat; needs a bot token too — 0 disables the loop.

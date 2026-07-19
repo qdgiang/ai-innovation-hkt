@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta, timezone
+from typing import cast
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -11,12 +12,15 @@ from sqlalchemy.orm import Session
 from evermind.config import settings
 from evermind.connectors.models import Message
 from evermind.connectors.service import ConnectorsService
-from evermind.contracts.commands import CitationSpec, OpSpec, ProposeDecision
+from evermind.contracts.commands import (
+    CitationSpec, OpSpec, ProposeDecision, RecordSignal,
+)
 from evermind.contracts.enums import CitationKind, CreatedFrom, DecisionScope
 from evermind.decisions.service import DecisionsService
 from evermind.ingestion.extraction import (
-    SYSTEM_PROMPT, ExtractedCandidate, ExtractionResult, build_user_prompt,
-    candidate_to_command, candidate_unit_key,
+    SYSTEM_PROMPT, ExtractedCandidate, ExtractedSignal, ExtractionResult,
+    build_user_prompt, candidate_to_command, candidate_unit_key,
+    signal_command_id,
 )
 from evermind.ingestion.identity import ADAPTERS, AuthorResolver
 from evermind.ingestion.models import ExtractionWindow, IngestCursor, Materialization
@@ -112,12 +116,13 @@ class IngestionService:
         parties = list(self.session.scalars(select(Party)))
 
         try:
-            result, call = (gateway or LLMGateway()).call_json(
+            raw_result, call = (gateway or LLMGateway()).call_json(
                 system=SYSTEM_PROMPT,
                 user=build_user_prompt(prompt_messages, members=members,
                                        open_tasks=open_tasks, parties=parties),
                 schema=ExtractionResult,
             )
+            result = cast(ExtractionResult, raw_result)
         except LLMUnavailable as exc:
             window.status = "failed"
             window.finished_at = datetime.now(timezone.utc)
@@ -135,6 +140,13 @@ class IngestionService:
                 messages_by_id=messages_by_id, service=service)
             for index, candidate in enumerate(result.candidates)
         ]
+        signal_outcomes = [
+            self._materialize_signal(
+                sig, index=index, group=group, window=window,
+                from_epoch=from_epoch, to_epoch=to_epoch,
+                messages_by_id=messages_by_id, service=service, org=org)
+            for index, sig in enumerate(result.signals)
+        ]
         self._advance_cursor(group_id, to_epoch)
         window.status = "done"
         window.finished_at = datetime.now(timezone.utc)
@@ -142,7 +154,7 @@ class IngestionService:
         self.session.commit()
         return {"group_id": group_id, "status": "done", "window_id": window.id,
                 "messages": len(pending), "candidates": len(result.candidates),
-                "outcomes": outcomes}
+                "outcomes": outcomes, "signals": signal_outcomes}
 
     def _materialize_candidate(
         self, candidate: ExtractedCandidate, *, index: int, group: ChatGroup,
@@ -190,6 +202,49 @@ class IngestionService:
                 "decision_id": outcome.get("decision_id"),
                 "task_id": outcome.get("task_id"),
                 "confidence": candidate.confidence}
+
+    def _materialize_signal(
+        self, sig: ExtractedSignal, *, index: int, group: ChatGroup,
+        window: ExtractionWindow, from_epoch: int, to_epoch: int,
+        messages_by_id: dict[int, Message], service: DecisionsService,
+        org: OrgService,
+    ) -> dict:
+        """SIG-1 producer half: one voiced mention -> one `RecordSignal` through
+        the gateway (D3 — signals never bypass it). No confidence gate: weak is
+        the point. Party text resolves via `org.match_party_alias` (SIG-2);
+        no match keeps the free-text topic (G22). [EVM-021]'s deterministic
+        command id makes window re-runs replay, never duplicate."""
+        message = messages_by_id.get(sig.message_id)
+        if message is None:
+            return {"index": index, "status": "hallucinated_message_id"}
+        if _MARKER_RE.match(message.text.strip()):
+            return {"index": index, "status": "marker_lane_owns_it"}
+        task_id = sig.task_id
+        if task_id is not None:
+            task = TasksService(self.session).get_task(task_id)
+            if task is None or task.project_id != group.project_id:
+                task_id = None  # hallucinated / foreign task link — keep topic-level
+        party = org.match_party_alias(sig.party) if sig.party else None
+        author = AuthorResolver(self.session).resolve(message, team_id=group.team_id)
+        outcome = service.handle(RecordSignal(
+            client_command_id=signal_command_id(group.id, from_epoch, to_epoch, index),
+            persona=(author.handle if author and author.handle
+                     else message.author_identity),
+            created_from=CreatedFrom.LLM,
+            ts=message.ts, source_message_id=message.id, window_id=window.id,
+            signal_kind=sig.kind, project_id=group.project_id,
+            task_id=task_id, party_id=party.id if party else None,
+            normalized_topic=" ".join(sig.topic.lower().split()),
+            excerpt=sig.excerpt,
+            reported_by_user_id=author.id if author else None,
+            # G22: unmatched counterparty text survives as free text
+            waiting_on_text=sig.party if sig.party and party is None else None,
+            evidence=[CitationSpec(message_id=message.id,
+                                   kind=CitationKind.EVIDENCE,
+                                   rev_at_capture=message.current_rev)],
+        ), commit=False)
+        return {"index": index, "status": outcome.get("status"),
+                "topic": sig.topic, "party_id": party.id if party else None}
 
     def _advance_cursor(self, group_id: int, to_epoch: int) -> None:
         cursor = self.session.get(IngestCursor, group_id)

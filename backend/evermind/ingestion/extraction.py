@@ -34,8 +34,23 @@ class ExtractedCandidate(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class ExtractedSignal(BaseModel):
+    """SIG-1 weak signal — a MENTION, not a settled call. One row per voiced
+    mention; the ledger accumulates them and promotion decides later
+    (≥2 corroborating or 1 + staleness). Never gated on confidence: the whole
+    point is catching things too weak to be decisions."""
+
+    kind: Literal["blocker", "dependency", "ask", "parked"]
+    topic: str  # short stable phrase — same wording for the same underlying issue
+    excerpt: str
+    message_id: int  # the mention's message (must exist in the window)
+    task_id: int | None = None  # an OPEN TASKS id when clearly about that task
+    party: str | None = None  # counterparty NAME from the ĐỐI TÁC list, if any
+
+
 class ExtractionResult(BaseModel):
     candidates: list[ExtractedCandidate] = []
+    signals: list[ExtractedSignal] = []
 
 
 SYSTEM_PROMPT = """Bạn là EverMind — bộ nhớ tổ chức của một nhóm tình nguyện Việt Nam.
@@ -49,9 +64,15 @@ Trả về DUY NHẤT một JSON object đúng schema sau (không văn xuôi, kh
   "task_id": <int hoặc null>,
   "decided_by_message_id": <int>,
   "evidence_message_ids": [<int>, ...],
-  "confidence": <0.0-1.0>}]}
+  "confidence": <0.0-1.0>}],
+ "signals": [{"kind": "blocker" | "dependency" | "ask" | "parked",
+  "topic": "<cụm từ ngắn, ổn định — cùng một vấn đề thì dùng cùng một topic>",
+  "excerpt": "<trích nguyên văn ngắn>",
+  "message_id": <int>,
+  "task_id": <int hoặc null>,
+  "party": "<tên đối tác trong danh sách ĐỐI TÁC, hoặc null>"}]}
 
-Quy tắc:
+Quy tắc cho "candidates":
 - CHỈ trích xuất khi có sự chốt/đồng thuận RÕ RÀNG trong tin nhắn. Câu hỏi,
   bàn luận chưa ngã ngũ, ý định mơ hồ → KHÔNG trích xuất.
 - "decision": một quyết định được chốt (chọn phương án, chốt địa điểm/giá/kế hoạch).
@@ -63,8 +84,22 @@ Quy tắc:
 - evidence_message_ids: mọi id tin nhắn làm bằng chứng — chỉ dùng id có thật
   trong cửa sổ, tuyệt đối không bịa.
 - confidence: mức chắc chắn thật của bạn; >= 0.9 chỉ khi chốt rành mạch không thể hiểu khác.
+
+Quy tắc cho "signals" (TÍN HIỆU YẾU — nhắc đến nhưng CHƯA chốt):
+- "blocker": việc đang vướng/chờ ai đó mà KHÔNG có chốt rõ (vd "bên X vẫn chưa
+  trả lời", "vẫn kẹt vụ giấy tờ"). Một lần nhắc = một signal — kể cả nói lướt qua.
+- "dependency": việc phải chờ việc/bên khác xong mới làm được.
+- "ask": câu hỏi cần quyết mà KHÔNG AI trả lời trong cửa sổ.
+- "parked": chủ đề bị hoãn kiểu "để sau đi", "gần ngày rồi tính".
+- topic: cụm ngắn gọn ổn định (vd "xưởng in chưa báo giá") — các lần nhắc cùng
+  vấn đề phải ra cùng topic để hệ thống dồn tích được.
+- party: chỉ dùng ĐÚNG tên trong danh sách ĐỐI TÁC; không khớp → null.
+- message_id: id tin nhắn CÓ THẬT chứa lời nhắc — không bịa.
+- KHÔNG tạo signal cho việc đã thành candidate (đã chốt thì không còn là tín hiệu yếu).
+
+Chung:
 - Tin nhắn bắt đầu bằng "!decision" hoặc "!blocked" đã được hệ thống xử lý riêng — BỎ QUA.
-- Không có gì đạt chuẩn → {"candidates": []}.
+- Không có gì đạt chuẩn → {"candidates": [], "signals": []}.
 """
 
 
@@ -99,6 +134,13 @@ def command_id(group_id: int, from_epoch: int, to_epoch: int, index: int) -> uui
     replays recorded outcomes at the gateway instead of duplicating [EVM-021]."""
     return uuid.uuid5(uuid.NAMESPACE_URL,
                       f"evermind-extract:{group_id}:{from_epoch}:{to_epoch}:{index}")
+
+
+def signal_command_id(group_id: int, from_epoch: int, to_epoch: int, index: int) -> uuid.UUID:
+    """Same [EVM-021] idempotency for the signal lane — its own namespace so a
+    window's Nth signal never collides with its Nth candidate."""
+    return uuid.uuid5(uuid.NAMESPACE_URL,
+                      f"evermind-signal:{group_id}:{from_epoch}:{to_epoch}:{index}")
 
 
 def candidate_unit_key(candidate: ExtractedCandidate) -> str:

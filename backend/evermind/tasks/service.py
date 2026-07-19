@@ -214,6 +214,9 @@ def _apply_op_to_state(state: dict, op: dict) -> None:
         else:
             state["end_date"] = value
             state["end_date_defaulted"] = False
+    elif facet == "status":
+        # mirrors fold.apply_op's blocked-context dict handling
+        state["status"] = value["status"] if isinstance(value, dict) else value
     elif facet in TASK_FIELD_FACETS:
         state[facet] = value
     elif facet == "assignment":
