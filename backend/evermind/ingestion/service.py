@@ -236,7 +236,12 @@ class IngestionService:
             task_id=task_id, party_id=party.id if party else None,
             normalized_topic=" ".join(sig.topic.lower().split()),
             excerpt=sig.excerpt,
-            author_user_id=author.id if author else None,
+            reported_by_user_id=author.id if author else None,
+            # G22: unmatched counterparty text survives as free text
+            waiting_on_text=sig.party if sig.party and party is None else None,
+            evidence=[CitationSpec(message_id=message.id,
+                                   kind=CitationKind.EVIDENCE,
+                                   rev_at_capture=message.current_rev)],
         ), commit=False)
         return {"index": index, "status": outcome.get("status"),
                 "topic": sig.topic, "party_id": party.id if party else None}

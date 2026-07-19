@@ -200,7 +200,7 @@ def test_window_emits_weak_signals_to_ledger(db_session, org_ids):
     assert signal is not None
     assert signal.normalized_topic == "kim long chưa báo giá"
     assert signal.party_id == org_ids["parties"]["PTY-KL"]
-    assert signal.author_user_id == org_ids["users"]["duc"]
+    assert signal.reported_by_user_id == org_ids["users"]["duc"]
     assert signal.message_id == 9301
 
 

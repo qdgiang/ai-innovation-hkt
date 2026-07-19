@@ -251,6 +251,8 @@ class DecisionsService:
                         else cmd.confidence),
             window_id=cmd.window_id,
             stable_event_id=stable,
+            review_reason=cmd.review_reason,
+            reported_by_user_id=cmd.reported_by_user_id,
         )
         self.session.add(decision)
         self.session.flush()
@@ -339,6 +341,10 @@ class DecisionsService:
     def _propose(self, cmd: ProposeDecision) -> dict:
         if not cmd.ops:
             return {"status": "invalid", "error": "a decision needs at least one op"}
+        if (cmd.review_reason == "signal_promotion"
+                and not self._valid_signal_promotion_ops(cmd.ops)):
+            return {"status": "invalid",
+                    "error": "signal promotion requires a blocked status op with waiting metadata"}
         # Invariant #1: chat-originated decisions carry >=1 evidence citation
         if cmd.created_from in (CreatedFrom.MARKER, CreatedFrom.LLM) and not any(
             c.kind == CitationKind.EVIDENCE for c in cmd.citations
@@ -416,7 +422,13 @@ class DecisionsService:
 
         hold_reason: str | None = None
         hold_extra: dict = {}
-        if cmd.relayed:
+        if cmd.review_reason == "signal_promotion":
+            # system-initiated: ALWAYS reviewed by the owning task's team
+            # (harvest of PR #53) — never born effective, whoever the reporter is
+            hold_reason = "signal_promotion"
+        elif cmd.force_proposed:
+            hold_reason = cmd.review_reason or "review_required"
+        elif cmd.relayed:
             hold_reason = "relayed"  # claimed maker not among cited authors
         elif not conf_ok:
             hold_reason = "below_tau"  # G19 confidence gate — never silently dropped
@@ -526,7 +538,14 @@ class DecisionsService:
         # unit is withdrawn, linked to the newer proposal
         withdrawn = self._withdraw_own_older(decision, plan, cmd)
 
-        approvers = auth.approvers or self._fallback_approvers(cmd, occupants, hold_reason)
+        if hold_reason == "signal_promotion":
+            # route to the owning task's team leads (+coordinator) even when the
+            # reporter would have had authority — a promotion is always reviewed
+            approvers = (self._signal_promotion_approvers(cmd)
+                         or auth.approvers
+                         or self._fallback_approvers(cmd, occupants, hold_reason))
+        else:
+            approvers = auth.approvers or self._fallback_approvers(cmd, occupants, hold_reason)
         self._emit("decision_proposed", "decision", decision.id,
                    self._decision_payload(decision, hold_reason=hold_reason,
                                           approvers=approvers,
@@ -653,6 +672,35 @@ class DecisionsService:
                             "proposer": cmd.decided_by_user_id},
                            new.ts, cmd)
         return withdrawn
+
+    @staticmethod
+    def _valid_signal_promotion_ops(ops: list[OpSpec]) -> bool:
+        """A promotion decision must carry exactly the blocked-context shape the
+        fold understands: a `status` set with {"status": "blocked", waiting…}."""
+        for op in ops:
+            if op.facet == "status" and op.op == "set" and isinstance(op.value, dict):
+                value = op.value
+                if value.get("status") == "blocked" and (
+                        value.get("waiting_on_party_id") is not None
+                        or value.get("waiting_on_text")):
+                    return True
+        return False
+
+    def _signal_promotion_approvers(self, cmd: ProposeDecision) -> list[int]:
+        """Owning-team routing for promotion reviews (harvest of PR #53): the
+        task's team leads + coordinator via the tasks read port; empty when the
+        port or team data is missing (callers fall back)."""
+        if self.task_port is None or not cmd.scope_target.startswith("task:"):
+            return []
+        view = self.task_port.get_task_view(int(cmd.scope_target.split(":", 1)[1]))
+        if view is None:
+            return []
+        approvers: list[int] = []
+        for team_id in view.team_ids:
+            for approver in self.authority.team_approvers(team_id):
+                if approver not in approvers:
+                    approvers.append(approver)
+        return approvers
 
     def _fallback_approvers(self, cmd: ProposeDecision,
                             occupants: dict[str, Decision],
@@ -995,7 +1043,10 @@ class DecisionsService:
                     "normalized_topic": cmd.normalized_topic, "excerpt": cmd.excerpt,
                     "message_id": cmd.source_message_id, "ts": _iso(ts),
                     "window_id": cmd.window_id,
-                    "author_user_id": cmd.author_user_id},
+                    "reported_by_user_id": cmd.reported_by_user_id,
+                    "waiting_on_text": cmd.waiting_on_text,
+                    "evidence": [c.model_dump(include={"message_id", "rev_at_capture"})
+                                 for c in cmd.evidence]},
                    ts, cmd)
         return {"status": "signal_recorded"}
 

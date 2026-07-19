@@ -19,7 +19,7 @@ T0 = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
 def _signal_recorded(session: Session, *, message_id: int, topic: str,
                      task_id: int | None = None, party_id: int | None = None,
-                     author_user_id: int | None = None) -> DomainEvent:
+                     reported_by_user_id: int | None = None) -> DomainEvent:
     event = DomainEvent(
         ts=T0, kind="signal_recorded", aggregate="signal",
         aggregate_id=task_id or 0,
@@ -27,7 +27,7 @@ def _signal_recorded(session: Session, *, message_id: int, topic: str,
                  "party_id": party_id, "normalized_topic": topic,
                  "excerpt": f"excerpt {message_id}", "message_id": message_id,
                  "ts": T0.isoformat(), "window_id": 7,
-                 "author_user_id": author_user_id},
+                 "reported_by_user_id": reported_by_user_id},
     )
     session.add(event)
     session.flush()
@@ -36,7 +36,7 @@ def _signal_recorded(session: Session, *, message_id: int, topic: str,
 
 def test_signal_recorded_folds_a_ledger_row(db_session: Session):
     _signal_recorded(db_session, message_id=41, topic="xưởng in chưa báo giá",
-                     party_id=9, author_user_id=3)
+                     party_id=9, reported_by_user_id=3)
 
     applied = SignalsConsumer(db_session).poll_and_apply()
 
@@ -47,7 +47,7 @@ def test_signal_recorded_folds_a_ledger_row(db_session: Session):
     assert signal.normalized_topic == "xưởng in chưa báo giá"
     assert signal.message_id == 41
     assert signal.party_id == 9
-    assert signal.author_user_id == 3
+    assert signal.reported_by_user_id == 3
     assert signal.window_id == 7
 
 
@@ -70,3 +70,34 @@ def test_consumer_skips_foreign_event_kinds(db_session: Session):
 
     assert SignalsConsumer(db_session).poll_and_apply() == 0
     assert db_session.scalar(select(Signal)) is None
+
+
+def test_malformed_event_is_quarantined_and_offset_advances(db_session: Session):
+    """PR #53 pattern: a poison event must never pin the projection — it's
+    logged, skipped, and the offset still moves past it."""
+    bad = DomainEvent(ts=T0, kind="signal_recorded", aggregate="signal",
+                      aggregate_id=0, payload={"signal_kind": "blocker"})  # missing keys
+    db_session.add(bad)
+    db_session.flush()
+    _signal_recorded(db_session, message_id=77, topic="lành lặn")
+
+    consumer = SignalsConsumer(db_session)
+    applied = consumer.poll_and_apply()
+
+    assert applied == 1  # only the healthy event folded
+    signal = db_session.scalar(select(Signal))
+    assert signal.message_id == 77
+    assert consumer.poll_and_apply() == 0  # offset moved PAST the poison event
+
+
+def test_content_dedupe_survives_offset_reset(db_session: Session):
+    """Replay past a reset offset (manual event-log repair) never duplicates."""
+    from evermind.db.eventlog import ProjectionOffset
+
+    _signal_recorded(db_session, message_id=41, topic="a")
+    consumer = SignalsConsumer(db_session)
+    consumer.poll_and_apply()
+    db_session.get(ProjectionOffset, "signals").last_seq = 0  # simulate repair
+
+    assert consumer.poll_and_apply() == 0  # dedupe caught it
+    assert len(db_session.scalars(select(Signal)).all()) == 1

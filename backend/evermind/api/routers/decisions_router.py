@@ -17,14 +17,18 @@ ACTIVE_STATUSES = (DecisionStatus.PROPOSED, DecisionStatus.EFFECTIVE)
 
 def _serialize(decision: Decision, citations: list[DecisionCitation],
                handles: dict[int, str | None]) -> dict:
+    # A signal promotion is a system proposal based on a reporter's evidence,
+    # not a formal decision made by that reporter.  Keep the DB actor private
+    # to gateway mechanics and expose provenance separately.
+    is_signal_promotion = decision.review_reason == "signal_promotion"
     return {
         "id": decision.id,
         "ts": decision.ts,
         "recorded_at": decision.recorded_at,
-        "decided_by_user_id": decision.decided_by_user_id,
-        "decided_by_handle": handles.get(decision.decided_by_user_id),
+        "decided_by_user_id": None if is_signal_promotion else decision.decided_by_user_id,
+        "decided_by_handle": None if is_signal_promotion else handles.get(decision.decided_by_user_id),
         # wire-compat alias (PR #45 contract tests): actor as a handle
-        "decided_by": handles.get(decision.decided_by_user_id),
+        "decided_by": None if is_signal_promotion else handles.get(decision.decided_by_user_id),
         "scope": decision.scope.value,
         "scope_target": decision.scope_target,
         "description": decision.description,
@@ -41,12 +45,18 @@ def _serialize(decision: Decision, citations: list[DecisionCitation],
         "approval_via": decision.approval_via.value if decision.approval_via else None,
         "created_from": decision.created_from.value,
         "confidence": decision.confidence,
+        "review_reason": decision.review_reason,
+        "reported_by_user_id": decision.reported_by_user_id,
+        "reported_by_handle": handles.get(decision.reported_by_user_id)
+        if decision.reported_by_user_id is not None else None,
         "effect_window": (
             {"from": decision.effect_window_from, "until": decision.effect_window_until}
             if decision.effect_window_from is not None else None
         ),
         "citations": [
-            {"message_id": c.message_id, "kind": c.kind.value} for c in citations
+            {"message_id": c.message_id, "kind": c.kind.value,
+             "rev_at_capture": c.rev_at_capture, "rev_at_act": c.rev_at_act}
+            for c in citations
         ],
     }
 

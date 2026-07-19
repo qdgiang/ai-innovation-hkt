@@ -156,7 +156,7 @@ def test_promotion_sweep_full_circle(db_session: Session, org_ids):
             party_id=kim_long, normalized_topic="kim long chưa báo giá",
             excerpt=f"nhắc lần {day + 1}", message_id=mid,
             ts=base + timedelta(days=day), window_id=1,
-            status=SignalStatus.OPEN, author_user_id=duc))
+            status=SignalStatus.OPEN, reported_by_user_id=duc))
     db_session.flush()
 
     service = SignalsService(db_session)
@@ -171,6 +171,13 @@ def test_promotion_sweep_full_circle(db_session: Session, org_ids):
     decision_id = reports[0]["decision"]["decision_id"]
     assert all(s.status is SignalStatus.PROMOTED
                for s in db_session.scalars(_select(Signal)))
+
+    # the explicit review lane (PR #53 harvest): reason + reporter persisted,
+    # and the review routed to the owning team, not just the reporter
+    from evermind.decisions.models import Decision as _Decision
+    decision = db_session.get(_Decision, decision_id)
+    assert decision.review_reason == "signal_promotion"
+    assert decision.reported_by_user_id == duc
 
     # nothing touches the task until a HUMAN confirms (promotion only proposes)
     TasksConsumer(db_session).poll_and_apply()

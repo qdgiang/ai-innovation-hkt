@@ -23,13 +23,24 @@ if TYPE_CHECKING:  # signals -> decisions is runtime-injected, never module-load
     from evermind.decisions.service import DecisionsService
 
 
+def _mention_rev(mention: Signal) -> int:
+    """rev_at_capture for a mention's own message, from the per-mention
+    evidence provenance (PR #53 shape); 1 when the ledger predates it."""
+    for entry in mention.evidence or []:
+        if entry.get("message_id") == mention.message_id:
+            return int(entry.get("rev_at_capture") or 1)
+    return 1
+
+
 class SignalsService:
     def __init__(self, session: Session):
         self.session = session
 
     def emit(self, *, kind: SignalKind, project_id: int, normalized_topic: str, excerpt: str,
               message_id: int, ts: datetime, window_id: int, task_id: int | None = None,
-              party_id: int | None = None) -> int:
+              party_id: int | None = None, reported_by_user_id: int | None = None,
+              waiting_on_text: str | None = None,
+              evidence: list[dict] | None = None) -> int:
         """SIG-1 — append-only ledger row keyed on the [EVM-013] identity
         (project, task?, party?, normalized_topic). Does NOT auto-promote —
         "one mention never promotes" (design-v2.md §Signals). Returns the new
@@ -39,6 +50,9 @@ class SignalsService:
             kind=kind, project_id=project_id, task_id=task_id, party_id=party_id,
             normalized_topic=normalized_topic, excerpt=excerpt, message_id=message_id,
             ts=ts, window_id=window_id, status=SignalStatus.OPEN,
+            reported_by_user_id=reported_by_user_id,
+            waiting_on_text=waiting_on_text,
+            evidence=evidence or [{"message_id": message_id, "rev_at_capture": 1}],
         )
         self.session.add(signal)
         self.session.flush()
@@ -120,29 +134,34 @@ class SignalsService:
                             "citations": [m.message_id for m in mentions]}
             first = mentions[0]
             if (task_id is not None and decisions_service is not None
-                    and first.author_user_id is not None):
+                    and first.reported_by_user_id is not None):
                 cid = uuid.uuid5(uuid.NAMESPACE_URL,
                                  "evermind-promote:"
                                  f"{project_id}:{task_id}:{party_id}:{topic}:"
                                  f"{mentions[-1].message_id}")
                 outcome = decisions_service.handle(ProposeDecision(
                     client_command_id=cid,
-                    persona=f"user-{first.author_user_id}",
+                    persona=f"user-{first.reported_by_user_id}",
                     created_from=CreatedFrom.LLM,
-                    confidence=0.5,  # < τ on purpose: born PROPOSED, human confirms
+                    # explicit review lane (harvest of PR #53): held as PROPOSED
+                    # with a stated reason — no confidence trickery
+                    force_proposed=True,
+                    review_reason="signal_promotion",
+                    reported_by_user_id=first.reported_by_user_id,
                     ts=first.ts, source_message_id=first.message_id,
                     window_id=first.window_id,
-                    decided_by_user_id=first.author_user_id,
+                    decided_by_user_id=first.reported_by_user_id,
                     scope=DecisionScope.TASK, scope_target=f"task:{task_id}",
                     description=f"Vướng: {topic}",
                     ops=[OpSpec(target=f"task:{task_id}", facet="status", op="set",
                                 value={"status": "blocked",
                                        "waiting_on_party_id": party_id,
-                                       "waiting_on_text": None if party_id else topic,
+                                       "waiting_on_text": (first.waiting_on_text
+                                                           or (None if party_id else topic)),
                                        "since": first.ts.isoformat()})],
                     citations=[CitationSpec(message_id=m.message_id,
                                             kind=CitationKind.EVIDENCE,
-                                            rev_at_capture=1)
+                                            rev_at_capture=_mention_rev(m))
                                for m in mentions],
                 ), commit=False)
                 report["decision"] = {"status": outcome.get("status"),

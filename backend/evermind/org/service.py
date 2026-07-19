@@ -45,6 +45,9 @@ class OrgService:
     def get_group(self, group_id: int) -> ChatGroup | None:
         return self.session.get(ChatGroup, group_id)
 
+    def get_party(self, party_id: int) -> Party | None:
+        return self.session.get(Party, party_id)
+
     def list_personas(self) -> list[User]:
         """DSH-1 switcher: every seeded user except `departed` (design-v2 §Users)."""
         return list(
