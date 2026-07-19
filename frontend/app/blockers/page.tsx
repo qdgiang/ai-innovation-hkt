@@ -4,12 +4,15 @@ import { api } from "@/lib/api-client";
 import { currentPersona } from "@/lib/persona";
 import type { BlockersResponse } from "@/lib/types";
 
-export default async function BlockersPage() {
+export default async function BlockersPage({ searchParams }: { searchParams: Promise<{ project_id?: string }> }) {
   let board: BlockersResponse = { groups: [] };
+  let projects: { id: number; name?: string }[] = [];
+  const selectedProject = (await searchParams).project_id;
   try {
     const persona = await currentPersona();
-    const projects = await api.get<{ id: number }[]>("/projects", persona);
-    if (projects[0]) board = await api.get<BlockersResponse>(`/blockers?project_id=${projects[0].id}`, persona);
+    projects = await api.get<{ id: number; name?: string }[]>("/projects", persona);
+    const projectId = selectedProject ?? (projects.length === 1 ? String(projects[0].id) : undefined);
+    if (projectId) board = await api.get<BlockersResponse>(`/blockers?project_id=${projectId}`, persona);
   } catch {
     // backend not reachable
   }
@@ -19,6 +22,8 @@ export default async function BlockersPage() {
   return (
     <div>
       <h1 className="mb-4 text-lg font-semibold">Blocker radar</h1>
+      {projects.length > 1 && !selectedProject && <p className="mb-3 text-sm text-slate-500">Choose a project to view its blockers.</p>}
+      {projects.length > 1 && <nav className="mb-3 flex gap-2 text-sm">{projects.map((project) => <Link key={project.id} href={`/blockers?project_id=${project.id}`} className="hover:underline">{project.name ?? `Project ${project.id}`}</Link>)}</nav>}
       {groups.length === 0 && <p className="text-sm text-slate-500">No open blockers.</p>}
       <div className="space-y-4">
         {groups.map((group) => (

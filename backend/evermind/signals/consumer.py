@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -23,6 +24,7 @@ from evermind.signals.service import SignalsService
 from evermind.tasks.service import TasksService
 
 CONSUMER_NAME = "signals"
+logger = logging.getLogger(__name__)
 
 
 class SignalsConsumer:
@@ -48,7 +50,14 @@ class SignalsConsumer:
         )
         for event in events:
             if event.kind == "signal_recorded":
-                self._on_signal(event)
+                # A malformed event must not keep this projection pinned on the
+                # same paid-extraction window forever.  The savepoint preserves
+                # valid prior work and lets the outer transaction advance offset.
+                try:
+                    with self.session.begin_nested():
+                        self._on_signal(event)
+                except (KeyError, TypeError, ValueError) as exc:
+                    logger.exception("quarantined malformed signal_recorded event %s: %s", event.seq, exc)
             offset.last_seq = event.seq
         return len(events)
 
@@ -98,17 +107,18 @@ class SignalsConsumer:
     ) -> int:
         now = now or datetime.now(timezone.utc)
         service = SignalsService(self.session)
-        rows = list(self.session.scalars(select(Signal).where(Signal.status == SignalStatus.OPEN)))
+        stmt = select(Signal).where(Signal.status == SignalStatus.OPEN)
+        if project_id is not None:
+            stmt = stmt.where(
+                Signal.project_id == project_id,
+                Signal.task_id == task_id,
+                Signal.party_id == party_id,
+                Signal.normalized_topic == topic,
+            )
+        rows = list(self.session.scalars(stmt))
         identities = {(s.project_id, s.task_id, s.party_id, s.normalized_topic) for s in rows}
         count = 0
         for pid, tid, party, name in identities:
-            if project_id is not None and (pid, tid, party, name) != (
-                project_id,
-                task_id,
-                party_id,
-                topic,
-            ):
-                continue
             promotion = service.try_promote(
                 project_id=pid, task_id=tid, party_id=party, normalized_topic=name, now=now
             )

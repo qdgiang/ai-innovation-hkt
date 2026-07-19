@@ -91,6 +91,13 @@ def apply_op(session: Session, *, decision_id: int, op: dict) -> None:
         if verb != "set":
             raise ValueError(f"facet {facet!r} only supports 'set', got {verb!r}")
         setattr(task, facet, value)
+        # A task cannot retain a stale external-wait explanation after any
+        # ordinary transition away from blocked.  The promotion decision writes
+        # the metadata in its paired facet; marker/update flows keep working.
+        if facet == "status" and value != "blocked":
+            task.blocked_waiting_on_party_id = None
+            task.blocked_waiting_on_text = None
+            task.blocked_since = None
         return
 
     if facet == "blocked_waiting_on":

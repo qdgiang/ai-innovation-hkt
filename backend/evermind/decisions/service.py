@@ -401,6 +401,8 @@ class DecisionsService:
     def _propose(self, cmd: ProposeDecision) -> dict:
         if not cmd.ops:
             return {"status": "invalid", "error": "a decision needs at least one op"}
+        if cmd.review_reason == "signal_promotion" and not self._valid_signal_promotion_ops(cmd.ops):
+            return {"status": "invalid", "error": "signal promotion requires blocked status and waiting metadata"}
         # Invariant #1: chat-originated decisions carry >=1 evidence citation
         if cmd.created_from in (CreatedFrom.MARKER, CreatedFrom.LLM) and not any(
             c.kind == CitationKind.EVIDENCE for c in cmd.citations
@@ -500,7 +502,9 @@ class DecisionsService:
 
         hold_reason: str | None = None
         hold_extra: dict = {}
-        if cmd.force_proposed:
+        if cmd.review_reason == "signal_promotion":
+            approvers = self._signal_promotion_approvers(cmd.scope_target)
+        elif cmd.force_proposed:
             hold_reason = cmd.review_reason or "review_required"
         elif cmd.relayed:
             hold_reason = "relayed"  # claimed maker not among cited authors
@@ -719,6 +723,26 @@ class DecisionsService:
                 return group.project_id
         return None
 
+    @staticmethod
+    def _valid_signal_promotion_ops(ops: list[OpSpec]) -> bool:
+        """Promotion has one indivisible outcome: block one task and explain it."""
+        if len(ops) != 2:
+            return False
+        status = [op for op in ops if op.facet == "status" and op.op == "set" and op.value == "blocked"]
+        waiting = [op for op in ops if op.facet == "blocked_waiting_on" and op.op == "set" and isinstance(op.value, dict)]
+        return len(status) == len(waiting) == 1 and status[0].target == waiting[0].target and status[0].target.startswith("task:")
+
+    def _signal_promotion_approvers(self, scope_target: str) -> list[int]:
+        """Owning-team leads approve promotions; coordinator is only fallback."""
+        if self.task_port is None or not scope_target.startswith("task:"):
+            return [u.id for u in self.org.list_personas() if u.role_rank == 3]
+        task = self.task_port.get_task_view(int(scope_target.split(":", 1)[1]))
+        if task is None:
+            return [u.id for u in self.org.list_personas() if u.role_rank == 3]
+        leads = [self.org.lead_of_team(team_id) for team_id in task.team_ids]
+        resolved = list(dict.fromkeys(lead for lead in leads if lead is not None))
+        return resolved or [u.id for u in self.org.list_personas() if u.role_rank == 3]
+
     def _authorize_ops(self, actor_id: int, cmd: ProposeDecision, targets: list[str] | None = None):
         """DEC-9/[EVM-003]: all-or-nothing — allowed iff the actor clears the
         HIGHEST authority any op requires (i.e. every target). `targets` are
@@ -893,6 +917,8 @@ class DecisionsService:
             return {"status": f"already_{decision.status.value}", "decision_id": decision.id}
 
         ops = [OpSpec(**op) for op in decision.ops]
+        if decision.review_reason == "signal_promotion" and not self._valid_signal_promotion_ops(ops):
+            return {"status": "invalid", "error": "invalid signal promotion", "decision_id": decision.id}
         plan = derive_unit_plan(ops)
         occupants = self._standing_occupants(plan.occupied_units, plan.displaced_prefixes)
 
@@ -903,6 +929,12 @@ class DecisionsService:
             return {"status": "revalidation_required", "decision_id": decision.id, "issues": issues}
 
         approver = cmd.approved_by_user_id
+        if decision.review_reason == "signal_promotion":
+            approvers = self._signal_promotion_approvers(decision.scope_target)
+            if approver not in approvers:
+                return {"status": "forbidden", "decision_id": decision.id,
+                        "basis": "signal promotion requires owning-team lead or coordinator fallback",
+                        "approvers": approvers}
         if approver == decision.decided_by_user_id:
             # self-confirm lane (below-tau / relayed): valid iff the maker holds
             # the unit's authority

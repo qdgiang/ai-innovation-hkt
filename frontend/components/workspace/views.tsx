@@ -441,7 +441,7 @@ export function RadarView(props: ViewProps) {
   const { bundle, onOpenTask } = props;
   const blocked = bundle.radar?.confirmed_blockers ?? [];
   const lamps = bundle.radar?.lamps ?? [];
-  const labels: Record<string, string> = { overdue: "Quá hạn", stale: "Im lặng lâu", idle: "Chưa bắt đầu", late_start: "Bắt đầu muộn", contested: "Có tranh chấp" };
+  const labels: Record<string, string> = { overdue: "Quá hạn", stale: "Im lặng lâu", idle: "Chưa bắt đầu", "late-start": "Bắt đầu muộn", contested: "Có tranh chấp" };
   return (
     <div className="list-view">
       <div className="list-view-header">
@@ -450,12 +450,11 @@ export function RadarView(props: ViewProps) {
           <p>Task đang chờ bên ngoài, gom theo đối tác — từ marker !blocked và updates</p>
         </div>
       </div>
-      {blocked.length === 0 ? (
-        <div className="radar-empty">
-          Không có blocker nào đang mở. 🎉
-        </div>
-      ) : (
-        <div className="radar-groups">
+      <div className="radar-groups">
+        {blocked.length === 0 ? (
+          <div className="radar-empty">Không có blocker nào đang mở. 🎉</div>
+        ) : (
+          <>
           <h3>Confirmed blockers</h3>
           {blocked.map((t) => (
             <div className="radar-party" key={t.task_id}>
@@ -468,13 +467,14 @@ export function RadarView(props: ViewProps) {
               </button>
             </div>
           ))}
-          <h3>Needs attention</h3>
-          {lamps.length === 0 ? <div className="radar-empty">Không có tín hiệu cần chú ý.</div> : lamps.map((lamp) => {
+          </>
+        )}
+        <h3>Needs attention</h3>
+        {lamps.length === 0 ? <div className="radar-empty">Không có tín hiệu cần chú ý.</div> : lamps.map((lamp) => {
             const task = bundle.tasks.find((item) => item.id === lamp.task_id);
             return task ? <div className="radar-party" key={`${lamp.task_id}-${lamp.lamp}`}><button onClick={() => onOpenTask(task.id)}><span><strong>{labels[lamp.lamp]} · {taskLabel(task.id)} · {task.description}</strong><small>{task.status}</small></span></button></div> : null;
-          })}
-        </div>
-      )}
+        })}
+      </div>
     </div>
   );
 }
