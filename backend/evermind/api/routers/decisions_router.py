@@ -41,6 +41,8 @@ def _serialize(decision: Decision, citations: list[DecisionCitation],
         "approval_via": decision.approval_via.value if decision.approval_via else None,
         "created_from": decision.created_from.value,
         "confidence": decision.confidence,
+        "review_reason": decision.review_reason,
+        "reported_by_user_id": decision.reported_by_user_id,
         "effect_window": (
             {"from": decision.effect_window_from, "until": decision.effect_window_until}
             if decision.effect_window_from is not None else None
